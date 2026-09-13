@@ -186,9 +186,9 @@
   <div class="modal">
     <h2 id="gal-title">Klantfoto</h2>
     <div class="grid2">
-      <div class="fld full"><label>Foto</label>
+      <div class="fld full"><label>Foto's <span class="hint" style="font-weight:400">— eerste = hoofdfoto; herschik met de pijltjes</span></label>
         <div class="fotos" id="g-foto-prev"></div>
-        <label class="filebtn" style="margin-top:8px" id="g-filebtn">Foto kiezen<input type="file" accept="image/*" onchange="setGalFoto(event)"></label>
+        <label class="filebtn" style="margin-top:8px" id="g-filebtn">+ Foto's toevoegen<input type="file" accept="image/*" multiple onchange="addGalFotos(event)"></label>
       </div>
       <div class="fld full"><label>Naam klant (optioneel)</label><input type="text" id="g-naam" placeholder="Bv. Familie Peeters"></div>
       <div class="fld full"><label>Bijschrift (optioneel, per taal)</label>
@@ -278,7 +278,7 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
     closeAbout(); alert('Over ons opgeslagen. Het staat meteen op de site.');
   }
   let editIdx=null, draftFotos=[];
-  let galIdx=null, galFoto='';
+  let galIdx=null, draftGalFotos=[];
 
   /* ---------------- auth ---------------- */
   async function initAuth(){
@@ -435,32 +435,36 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
     document.getElementById('gal-summary').innerHTML=`<span><b>${gallery.length}</b> klantfoto's</span>`;
     const el=document.getElementById('gal-list');
     if(!gallery.length){ el.innerHTML=`<div class="row"><div class="info">Nog geen klantfoto's. Klik “+ Klantfoto toevoegen”.</div></div>`; return; }
-    el.innerHTML=gallery.map((k,i)=>`<div class="row"><div class="gal-thumb">${k.foto?`<img src="${k.foto}">`:''}</div><div class="info"><div class="nm">${esc(k.naam||'(zonder naam)')}</div><div class="sub"><span>${esc(k.tekst_nl||'')}</span></div></div>
-      <div class="acts"><button class="btn icon" onclick="galMove(${i},-1)">↑</button><button class="btn icon" onclick="galMove(${i},1)">↓</button><button class="btn ghost sm" onclick="openGal(${i})">Bewerk</button><button class="btn danger sm" onclick="galDel(${i})">Verwijder</button></div></div>`).join('');
+    el.innerHTML=gallery.map((k,i)=>{ const ff=(k.fotos&&k.fotos.length)?k.fotos:(k.foto?[k.foto]:[]); return `<div class="row"><div class="gal-thumb">${ff.length?`<img src="${ff[0]}">`:''}</div><div class="info"><div class="nm">${esc(k.naam||'(zonder naam)')}</div><div class="sub"><span>${esc(k.tekst_nl||'')}</span>${ff.length>1?`<span>${ff.length} foto's</span>`:''}</div></div>
+      <div class="acts"><button class="btn icon" onclick="galMove(${i},-1)">↑</button><button class="btn icon" onclick="galMove(${i},1)">↓</button><button class="btn ghost sm" onclick="openGal(${i})">Bewerk</button><button class="btn danger sm" onclick="galDel(${i})">Verwijder</button></div></div>`; }).join('');
   }
   async function galMove(i,d){ const j=i+d; if(j<0||j>=gallery.length)return; [gallery[i],gallery[j]]=[gallery[j],gallery[i]]; renderGal(); await persistOrder('gallery',gallery); }
   async function galDel(i){ if(!confirm('Deze klantfoto verwijderen?'))return; const id=gallery[i].id; const {error}=await sb.from('gallery').delete().eq('id',id); if(error){ alert('Verwijderen mislukt: '+error.message); return; } gallery.splice(i,1); renderGal(); }
   function openGal(idx){
     galIdx=idx;
-    const k=idx==null?{foto:'',naam:'',tekst_nl:'',tekst_en:'',tekst_fr:''}:gallery[idx];
+    const k=idx==null?{fotos:[],naam:'',tekst_nl:'',tekst_en:'',tekst_fr:''}:gallery[idx];
     document.getElementById('gal-title').textContent=idx==null?'Nieuwe klantfoto':'Klantfoto bewerken';
-    galFoto=k.foto||''; renderGalFoto();
+    draftGalFotos=(k.fotos&&k.fotos.length)?[...k.fotos]:(k.foto?[k.foto]:[]); renderGalFotos();
     document.getElementById('g-naam').value=k.naam||'';
     ['nl','en','fr'].forEach(l=>document.getElementById('g-tekst-'+l).value=k['tekst_'+l]||'');
     document.getElementById('gal-overlay').classList.add('on');
   }
   function closeGal(){ document.getElementById('gal-overlay').classList.remove('on'); }
-  function renderGalFoto(){ document.getElementById('g-foto-prev').innerHTML=galFoto?`<div class="foto"><img src="${galFoto}"><button class="x" onclick="galFoto='';renderGalFoto()">×</button></div>`:''; }
-  async function setGalFoto(ev){
-    const f=ev.target.files[0]; ev.target.value=''; if(!f)return;
+  function renderGalFotos(){
+    document.getElementById('g-foto-prev').innerHTML=draftGalFotos.map((f,i)=>`<div class="foto ${i===0?'first':''}"><img src="${f}" alt=""><button class="x" onclick="rmGalFoto(${i})">×</button><div class="mv">${i>0?`<button onclick="mvGalFoto(${i},-1)">‹</button>`:''}${i<draftGalFotos.length-1?`<button onclick="mvGalFoto(${i},1)">›</button>`:''}</div></div>`).join('');
+  }
+  function rmGalFoto(i){ draftGalFotos.splice(i,1); renderGalFotos(); }
+  function mvGalFoto(i,d){ const j=i+d; if(j<0||j>=draftGalFotos.length)return; [draftGalFotos[i],draftGalFotos[j]]=[draftGalFotos[j],draftGalFotos[i]]; renderGalFotos(); }
+  async function addGalFotos(ev){
+    const files=[...ev.target.files]; ev.target.value='';
     const lbl=document.getElementById('g-filebtn'); const orig=lbl.innerHTML; lbl.style.pointerEvents='none'; lbl.firstChild.textContent='Uploaden…';
-    try{ galFoto=await uploadPhoto(f,'gallery'); renderGalFoto(); }catch(e){ alert('Upload mislukt: '+(e.message||e)); }
+    for(const f of files){ try{ draftGalFotos.push(await uploadPhoto(f,'gallery')); renderGalFotos(); }catch(e){ alert('Upload mislukt: '+(e.message||e)); } }
     lbl.innerHTML=orig;
   }
   async function saveGal(){
-    if(!galFoto){ alert('Kies een foto.'); return; }
+    if(!draftGalFotos.length){ alert('Voeg minstens één foto toe.'); return; }
     const g=(id)=>document.getElementById(id).value.trim();
-    const row={ foto:galFoto, naam:g('g-naam'), tekst_nl:g('g-tekst-nl'), tekst_en:g('g-tekst-en'), tekst_fr:g('g-tekst-fr') };
+    const row={ fotos:[...draftGalFotos], foto:draftGalFotos[0]||'', naam:g('g-naam'), tekst_nl:g('g-tekst-nl'), tekst_en:g('g-tekst-en'), tekst_fr:g('g-tekst-fr') };
     const btn=document.getElementById('gal-save-btn'); btn.disabled=true; btn.textContent='Opslaan…';
     try{
       if(galIdx==null){ row.sort=gallery.length; const {data,error}=await sb.from('gallery').insert(row).select().single(); if(error) throw error; gallery.push(data); }
