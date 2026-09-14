@@ -86,7 +86,19 @@
   .login-card input{width:100%;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:11px 12px;margin-bottom:10px}
   .login-card .err{color:var(--bad);font-size:13px;min-height:18px;margin-top:6px}
   #app{display:none}
-  @media(max-width:620px){.grid2{grid-template-columns:1fr}}
+  .addon-row{display:flex;gap:8px;margin-bottom:6px}
+  .addon-row .a-naam{flex:2}.addon-row .a-kost{flex:1}
+  .addon-row input{font-family:inherit;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+  .assum-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 16px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .assum-grid label{display:flex;flex-direction:column;font-size:12px;font-weight:600;color:var(--navy);gap:5px}
+  .assum-grid input{font-family:inherit;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-weight:400}
+  .assum-actions{grid-column:1/-1;display:flex;align-items:center;gap:12px}
+  .calc-table{width:100%;border-collapse:collapse;font-size:13px;background:var(--paper);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .calc-table th,.calc-table td{padding:9px 11px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  .calc-table th:first-child,.calc-table td:first-child{text-align:left}
+  .calc-table th{background:#f0f3fb;color:var(--navy);font-size:11px;letter-spacing:.03em}
+  .calc-table td.muted{text-align:left;color:var(--muted);font-style:italic}
+  @media(max-width:620px){.grid2{grid-template-columns:1fr}.assum-grid{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
@@ -128,6 +140,7 @@
   <div class="tabs">
     <button id="tab-col" class="on" onclick="showTab('col')">Collectie</button>
     <button id="tab-gal" onclick="showTab('gal')">Klantfoto's</button>
+    <button id="tab-calc" onclick="showTab('calc')">Calculator</button>
   </div>
 
   <div id="view-col">
@@ -140,6 +153,12 @@
     <div class="summary" id="gal-summary"></div>
     <div style="margin-bottom:14px"><button class="btn" onclick="openGal(null)">+ Klantfoto toevoegen</button></div>
     <div class="list" id="gal-list"></div>
+  </div>
+
+  <div id="view-calc" style="display:none">
+    <div class="note" style="background:#eef1fb;border-color:#cdd6f5;color:#26407a">Kostcalculator op basis van de productie-info per item (tab Collectie → Bewerk → Intern). Bedragen excl. btw tenzij anders vermeld. Wijzig de aannames hieronder en klik <b>Aannames opslaan</b>.</div>
+    <div class="calc-assum" id="calc-assum"></div>
+    <div style="overflow:auto;margin-top:16px"><table class="calc-table" id="calc-table"></table></div>
   </div>
 </div>
 </div>
@@ -176,6 +195,18 @@
         <div class="fotos" id="f-fotos"></div>
         <label class="filebtn" style="margin-top:8px" id="f-filebtn">+ Foto's toevoegen<input type="file" accept="image/*" multiple onchange="addFotos(event)"></label>
       </div>
+
+      <div class="fld full" style="border-top:1px solid var(--line);margin-top:8px;padding-top:14px"><label style="font-size:13px;color:var(--blue)">Intern — productie &amp; kosten <span class="hint" style="font-weight:400">(niet zichtbaar op de site; voor de calculator)</span></label></div>
+      <div class="fld"><label>Productietijd (u / min)</label><div style="display:flex;gap:8px"><input type="number" id="f-uren" min="0" placeholder="uren" style="flex:1"><input type="number" id="f-min" min="0" max="59" placeholder="min" style="flex:1"></div></div>
+      <div class="fld"><label>Totaal gram</label><input type="number" id="f-gram" min="0" step="0.01"></div>
+      <div class="fld"><label>Nozzle</label><select id="f-nozzle"><option>0.2</option><option selected>0.4</option><option>0.6</option><option>0.8</option></select></div>
+      <div class="fld"><label>Filamenttype</label><select id="f-filament"><option>PLA</option><option>PETG</option><option>TPU</option><option>ABS</option><option>ASA</option><option>PC</option><option>PA</option><option>PVA</option><option>Other</option></select></div>
+      <div class="fld"><label>Filament €/kg (excl btw)</label><input type="number" id="f-eurkg" min="0" step="0.01"></div>
+      <div class="fld"><label>Arbeid (min)</label><input type="number" id="f-arbeid" min="0"></div>
+      <div class="fld full"><label>Add-ons (excl btw) — bv. ledlamp</label><div id="f-addons"></div><button type="button" class="btn ghost sm" style="margin-top:6px" onclick="addAddonRow()">+ Add-on</button></div>
+      <div class="fld"><label class="check"><input type="checkbox" id="f-lic" onchange="toggleLic()"> Digitale licentie nodig</label></div>
+      <div class="fld" id="f-lic-wrap" style="display:none"><label>Licentiekost (excl btw)</label><input type="number" id="f-lic-kost" min="0" step="0.01"></div>
+      <div class="fld full" id="f-lic-det-wrap" style="display:none"><label>Licentie — details</label><input type="text" id="f-lic-det" placeholder="Bv. bron / voorwaarden"></div>
     </div>
     <div class="modal-acts"><button class="btn ghost" onclick="closeEditor()">Annuleren</button><button class="btn" id="save-btn" onclick="saveEditor()">Opslaan</button></div>
   </div>
@@ -310,19 +341,25 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
   function showTab(t){
     document.getElementById('tab-col').classList.toggle('on',t==='col');
     document.getElementById('tab-gal').classList.toggle('on',t==='gal');
+    document.getElementById('tab-calc').classList.toggle('on',t==='calc');
     document.getElementById('view-col').style.display=t==='col'?'':'none';
     document.getElementById('view-gal').style.display=t==='gal'?'':'none';
+    document.getElementById('view-calc').style.display=t==='calc'?'':'none';
+    if(t==='calc') renderCalc();
   }
 
   /* ---------------- load ---------------- */
+  let intern={}; // product_id -> interne info
   async function loadAll(){
-    const [pr,gl]=await Promise.all([
+    const [pr,gl,it]=await Promise.all([
       sb.from('products').select('*').order('sort',{ascending:true}),
-      sb.from('gallery').select('*').order('sort',{ascending:true})
+      sb.from('gallery').select('*').order('sort',{ascending:true}),
+      sb.from('product_intern').select('*')
     ]);
     if(pr.error){ alert('Kon producten niet laden: '+pr.error.message+'\n\nControleer of je het SQL-script hebt uitgevoerd.'); items=[]; }
     else items=(pr.data||[]);
     gallery = gl.error ? [] : (gl.data||[]);
+    intern={}; if(!it.error && it.data){ it.data.forEach(r=>intern[r.product_id]=r); }
     renderList(); renderGal(); loadAbout();
   }
 
@@ -383,9 +420,30 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
     buildColorChecks(sel);
     document.getElementById('f-kleuren-extra').value=extra.join(', ');
     draftFotos=[...(p.fotos||[])]; renderFotos(); toggleTerug();
+    // intern
+    const iv=(idx!=null && p.id && intern[p.id])?intern[p.id]:{prod_uren:0,prod_min:0,gram:0,nozzle:'0.4',filamenttype:'PLA',filament_eur_kg:25.99,arbeid_min:15,addons:[],licentie_nodig:false,licentie_kost:0,licentie_details:''};
+    document.getElementById('f-uren').value=iv.prod_uren||0;
+    document.getElementById('f-min').value=iv.prod_min||0;
+    document.getElementById('f-gram').value=iv.gram||0;
+    document.getElementById('f-nozzle').value=iv.nozzle||'0.4';
+    document.getElementById('f-filament').value=iv.filamenttype||'PLA';
+    document.getElementById('f-eurkg').value=(iv.filament_eur_kg!=null?iv.filament_eur_kg:25.99);
+    document.getElementById('f-arbeid').value=(iv.arbeid_min!=null?iv.arbeid_min:15);
+    draftAddons=Array.isArray(iv.addons)?iv.addons.map(a=>({naam:a.naam||'',kost:a.kost!=null?a.kost:''})):[]; renderAddons();
+    document.getElementById('f-lic').checked=!!iv.licentie_nodig;
+    document.getElementById('f-lic-kost').value=iv.licentie_kost||0;
+    document.getElementById('f-lic-det').value=iv.licentie_details||'';
+    toggleLic();
     document.getElementById('overlay').classList.add('on');
   }
   function closeEditor(){ document.getElementById('overlay').classList.remove('on'); }
+  // add-ons
+  let draftAddons=[];
+  function addonRowHTML(a){ return `<div class="addon-row"><input class="a-naam" type="text" placeholder="bv. ledlamp" value="${esc(a.naam||'')}"><input class="a-kost" type="number" step="0.01" placeholder="€ excl" value="${a.kost!==''&&a.kost!=null?a.kost:''}"><button type="button" class="btn danger sm" onclick="this.parentElement.remove()">×</button></div>`; }
+  function renderAddons(){ document.getElementById('f-addons').innerHTML=draftAddons.map(addonRowHTML).join(''); }
+  function addAddonRow(){ document.getElementById('f-addons').insertAdjacentHTML('beforeend', addonRowHTML({naam:'',kost:''})); }
+  function toggleLic(){ const on=document.getElementById('f-lic').checked; document.getElementById('f-lic-wrap').style.display=on?'':'none'; document.getElementById('f-lic-det-wrap').style.display=on?'':'none'; }
+  function readAddons(){ return [...document.querySelectorAll('#f-addons .addon-row')].map(r=>({naam:r.querySelector('.a-naam').value.trim(),kost:+r.querySelector('.a-kost').value||0})).filter(a=>a.naam||a.kost); }
   function renderFotos(){
     document.getElementById('f-fotos').innerHTML=draftFotos.map((f,i)=>`<div class="foto ${i===0?'first':''}"><img src="${f}" alt=""><button class="x" onclick="rmFoto(${i})">×</button><div class="mv">${i>0?`<button onclick="mvFoto(${i},-1)">‹</button>`:''}${i<draftFotos.length-1?`<button onclick="mvFoto(${i},1)">›</button>`:''}</div></div>`).join('');
   }
@@ -425,6 +483,24 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
         if(error) throw error;
         items[editIdx]=data;
       }
+      // interne info opslaan (aparte, afgeschermde tabel)
+      const pid = editIdx==null ? items[items.length-1].id : items[editIdx].id;
+      const internRow={ product_id:pid,
+        prod_uren:+document.getElementById('f-uren').value||0,
+        prod_min:+document.getElementById('f-min').value||0,
+        gram:+document.getElementById('f-gram').value||0,
+        nozzle:document.getElementById('f-nozzle').value,
+        filamenttype:document.getElementById('f-filament').value,
+        filament_eur_kg:+document.getElementById('f-eurkg').value||0,
+        arbeid_min:+document.getElementById('f-arbeid').value||0,
+        addons:readAddons(),
+        licentie_nodig:document.getElementById('f-lic').checked,
+        licentie_kost:+document.getElementById('f-lic-kost').value||0,
+        licentie_details:document.getElementById('f-lic-det').value.trim()
+      };
+      const { error:ie }=await sb.from('product_intern').upsert(internRow);
+      if(ie) throw ie;
+      intern[pid]=internRow;
       renderList(); closeEditor();
     }catch(e){ alert('Opslaan mislukt: '+(e.message||e)); }
     finally{ btn.disabled=false; btn.textContent='Opslaan'; }
@@ -488,6 +564,56 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
 
   /* ---------------- back-up ---------------- */
   function doExport(){ const b=new Blob([JSON.stringify({products:items,gallery:gallery},null,2)],{type:'application/json'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download='blue-things-backup.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(u),2000); }
+
+  /* ---------------- kostcalculator ---------------- */
+  const POWER={PLA:190,PETG:215,TPU:150,ABS:260,ASA:270,PC:300,PA:300,PVA:190,Other:200};
+  let CALC={elec:0.055,labor:45,waste:0.05,margin:0.30,printer:3719,lifetime:7000,_loaded:false};
+  async function renderCalc(){
+    if(!CALC._loaded){ try{ const {data}=await sb.from('app_settings').select('value').eq('key','calc_config').maybeSingle(); if(data&&data.value){ Object.assign(CALC, JSON.parse(data.value)); } }catch(e){} CALC._loaded=true; }
+    renderAssum(); renderCalcTable();
+  }
+  function renderAssum(){
+    const dep=CALC.printer/(CALC.lifetime||1);
+    document.getElementById('calc-assum').innerHTML=`<div class="assum-grid">
+      <label>Elektriciteit €/kWh<input type="number" step="0.001" id="c-elec" value="${CALC.elec}"></label>
+      <label>Arbeid €/u<input type="number" step="0.01" id="c-labor" value="${CALC.labor}"></label>
+      <label>Waste %<input type="number" step="1" id="c-waste" value="${Math.round(CALC.waste*100)}"></label>
+      <label>Marge %<input type="number" step="1" id="c-margin" value="${Math.round(CALC.margin*100)}"></label>
+      <label>Printer € (excl)<input type="number" step="1" id="c-printer" value="${CALC.printer}"></label>
+      <label>Levensduur (u)<input type="number" step="1" id="c-lifetime" value="${CALC.lifetime}"></label>
+      <div class="assum-actions"><button class="btn" onclick="saveAssum()">Aannames opslaan</button><span class="hint">Afschrijving €${dep.toFixed(3)}/u</span></div>
+    </div>`;
+  }
+  async function saveAssum(){
+    CALC.elec=+document.getElementById('c-elec').value||0;
+    CALC.labor=+document.getElementById('c-labor').value||0;
+    CALC.waste=(+document.getElementById('c-waste').value||0)/100;
+    CALC.margin=(+document.getElementById('c-margin').value||0)/100;
+    CALC.printer=+document.getElementById('c-printer').value||0;
+    CALC.lifetime=+document.getElementById('c-lifetime').value||1;
+    const val=JSON.stringify({elec:CALC.elec,labor:CALC.labor,waste:CALC.waste,margin:CALC.margin,printer:CALC.printer,lifetime:CALC.lifetime});
+    const {error}=await sb.from('app_settings').upsert({key:'calc_config',value:val});
+    if(error){ alert('Opslaan mislukt: '+error.message); return; }
+    renderAssum(); renderCalcTable();
+  }
+  function calcRow(p){
+    const iv=intern[p.id]; if(!iv) return null;
+    const h=(+iv.prod_uren||0)+(+iv.prod_min||0)/60;
+    const grams=+iv.gram||0, eurkg=+iv.filament_eur_kg||0, laborMin=+iv.arbeid_min||0;
+    const power=POWER[iv.filamenttype]||200, dep=CALC.printer/(CALC.lifetime||1);
+    const filament=grams/1000*eurkg, elec=power/1000*h*CALC.elec, labor=CALC.labor*laborMin/60, deprec=dep*h;
+    const subtotal=filament+elec+labor+deprec, base=subtotal+subtotal*CALC.waste;
+    const addons=(iv.addons||[]).reduce((s,a)=>s+(+a.kost||0),0), lic=iv.licentie_nodig?(+iv.licentie_kost||0):0;
+    const extra=addons+lic, totalCost=base+extra, sell=base*(1+CALC.margin)+extra;
+    return {h,grams,filament,labor,base,extra,totalCost,sell,sellIncl:sell*1.21};
+  }
+  function renderCalcTable(){
+    const rows=items.map(p=>{ const naam=esc(p.naam_nl||'(zonder naam)'); const c=calcRow(p);
+      if(!c) return `<tr><td>${naam}</td><td colspan="8" class="muted">geen productie-info ingevuld</td></tr>`;
+      return `<tr><td>${naam}</td><td>${c.h.toFixed(2)}</td><td>${(+c.grams).toFixed(0)}</td><td>€${c.filament.toFixed(2)}</td><td>€${c.labor.toFixed(2)}</td><td>€${c.base.toFixed(2)}</td><td>€${c.extra.toFixed(2)}</td><td><b>€${c.totalCost.toFixed(2)}</b></td><td>€${c.sell.toFixed(2)}</td><td>€${c.sellIncl.toFixed(2)}</td></tr>`;
+    }).join('');
+    document.getElementById('calc-table').innerHTML=`<thead><tr><th>Item</th><th>Uren</th><th>Gram</th><th>Filament</th><th>Arbeid</th><th>Basiskost</th><th>Extra</th><th>Totale kost (excl)</th><th>Verkoop (excl)</th><th>Verkoop (incl)</th></tr></thead><tbody>${rows}</tbody>`;
+  }
 
   document.getElementById('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') closeEditor(); });
   document.getElementById('gal-overlay').addEventListener('click',e=>{ if(e.target.id==='gal-overlay') closeGal(); });
