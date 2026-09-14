@@ -602,18 +602,18 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
     const grams=+iv.gram||0, eurkg=+iv.filament_eur_kg||0, laborMin=+iv.arbeid_min||0;
     const power=POWER[iv.filamenttype]||200, dep=CALC.printer/(CALC.lifetime||1);
     const filament=grams/1000*eurkg, elec=power/1000*h*CALC.elec, labor=CALC.labor*laborMin/60, deprec=dep*h;
-    const subtotal=filament+elec+labor+deprec, base=subtotal+subtotal*CALC.waste;
+    const subtotal=filament+elec+labor+deprec, waste=subtotal*CALC.waste, base=subtotal+waste;
     const addons=(iv.addons||[]).reduce((s,a)=>s+(+a.kost||0),0), lic=iv.licentie_nodig?(+iv.licentie_kost||0):0;
     const extra=addons+lic, totalCost=base+extra, sell=base*(1+CALC.margin)+extra;
-    return {h,grams,filament,labor,base,extra,totalCost,sell,sellIncl:sell*1.21};
+    return {h,grams,filament,elec,labor,deprec,waste,base,extra,totalCost,sell,sellIncl:sell*1.21};
   }
   function renderCalcTable(){
     const rows=items.map(p=>{ const naam=esc(p.naam_nl||'(zonder naam)'); const c=calcRow(p);
       const inColl=esc(p.prijs||'—');
-      if(!c) return `<tr><td>${naam}</td><td colspan="8" class="muted">geen productie-info ingevuld</td><td>${inColl}</td><td></td></tr>`;
-      return `<tr><td>${naam}</td><td>${c.h.toFixed(2)}</td><td>${(+c.grams).toFixed(0)}</td><td>€${c.filament.toFixed(2)}</td><td>€${c.labor.toFixed(2)}</td><td>€${c.base.toFixed(2)}</td><td>€${c.extra.toFixed(2)}</td><td><b>€${c.totalCost.toFixed(2)}</b></td><td>€${c.sell.toFixed(2)}</td><td>€${c.sellIncl.toFixed(2)}</td><td><b>${inColl}</b></td><td><button class="btn ghost sm" onclick="applyPrice('${p.id}',${c.sellIncl.toFixed(2)})">↤ neem over</button></td></tr>`;
+      if(!c) return `<tr><td>${naam}</td><td colspan="11" class="muted">geen productie-info ingevuld</td><td>${inColl}</td><td></td></tr>`;
+      return `<tr><td>${naam}</td><td>${c.h.toFixed(2)}</td><td>${(+c.grams).toFixed(0)}</td><td>€${c.filament.toFixed(2)}</td><td>€${c.labor.toFixed(2)}</td><td>€${c.elec.toFixed(2)}</td><td>€${c.deprec.toFixed(2)}</td><td>€${c.waste.toFixed(2)}</td><td>€${c.base.toFixed(2)}</td><td>€${c.extra.toFixed(2)}</td><td><b>€${c.totalCost.toFixed(2)}</b></td><td>€${c.sell.toFixed(2)}</td><td>€${c.sellIncl.toFixed(2)}</td><td><b>${inColl}</b></td><td><button class="btn ghost sm" onclick="applyPrice('${p.id}',${c.sellIncl.toFixed(2)})">↤ neem over</button></td></tr>`;
     }).join('');
-    document.getElementById('calc-table').innerHTML=`<thead><tr><th>Item</th><th>Uren</th><th>Gram</th><th>Filament</th><th>Arbeid</th><th>Basiskost</th><th>Extra</th><th>Totale kost (excl)</th><th>Verkoop berekend (excl)</th><th>Verkoop berekend (incl)</th><th>Prijs in collectie</th><th>Actie</th></tr></thead><tbody>${rows}</tbody>`;
+    document.getElementById('calc-table').innerHTML=`<thead><tr><th>Item</th><th>Uren</th><th>Gram</th><th>Filament</th><th>Arbeid</th><th>Elektr.</th><th>Afschr.</th><th>Waste</th><th>Basiskost</th><th>Extra</th><th>Totale kost (excl)</th><th>Verkoop berekend (excl)</th><th>Verkoop berekend (incl)</th><th>Prijs in collectie</th><th>Actie</th></tr></thead><tbody>${rows}</tbody>`;
   }
   async function applyPrice(pid, sellIncl){
     const rounded=Math.ceil(+sellIncl); // afgerond naar hele euro naar boven
