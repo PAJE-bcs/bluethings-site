@@ -20,7 +20,7 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftp
           port: 21
-          server-dir: ${{ secrets.FTP_DIR }}
+          server-dir: "www.bluethings.be/www/"
           local-dir: ./site/
           dangerous-clean-slate: true
           exclude: |
