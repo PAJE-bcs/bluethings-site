@@ -610,10 +610,19 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
   function renderCalcTable(){
     const rows=items.map(p=>{ const naam=esc(p.naam_nl||'(zonder naam)'); const c=calcRow(p);
       const inColl=esc(p.prijs||'—');
-      if(!c) return `<tr><td>${naam}</td><td colspan="8" class="muted">geen productie-info ingevuld</td><td>${inColl}</td></tr>`;
-      return `<tr><td>${naam}</td><td>${c.h.toFixed(2)}</td><td>${(+c.grams).toFixed(0)}</td><td>€${c.filament.toFixed(2)}</td><td>€${c.labor.toFixed(2)}</td><td>€${c.base.toFixed(2)}</td><td>€${c.extra.toFixed(2)}</td><td><b>€${c.totalCost.toFixed(2)}</b></td><td>€${c.sell.toFixed(2)}</td><td>€${c.sellIncl.toFixed(2)}</td><td><b>${inColl}</b></td></tr>`;
+      if(!c) return `<tr><td>${naam}</td><td colspan="8" class="muted">geen productie-info ingevuld</td><td>${inColl}</td><td></td></tr>`;
+      return `<tr><td>${naam}</td><td>${c.h.toFixed(2)}</td><td>${(+c.grams).toFixed(0)}</td><td>€${c.filament.toFixed(2)}</td><td>€${c.labor.toFixed(2)}</td><td>€${c.base.toFixed(2)}</td><td>€${c.extra.toFixed(2)}</td><td><b>€${c.totalCost.toFixed(2)}</b></td><td>€${c.sell.toFixed(2)}</td><td>€${c.sellIncl.toFixed(2)}</td><td><b>${inColl}</b></td><td><button class="btn ghost sm" onclick="applyPrice('${p.id}',${c.sellIncl.toFixed(2)})">↤ neem over</button></td></tr>`;
     }).join('');
-    document.getElementById('calc-table').innerHTML=`<thead><tr><th>Item</th><th>Uren</th><th>Gram</th><th>Filament</th><th>Arbeid</th><th>Basiskost</th><th>Extra</th><th>Totale kost (excl)</th><th>Verkoop berekend (excl)</th><th>Verkoop berekend (incl)</th><th>Prijs in collectie</th></tr></thead><tbody>${rows}</tbody>`;
+    document.getElementById('calc-table').innerHTML=`<thead><tr><th>Item</th><th>Uren</th><th>Gram</th><th>Filament</th><th>Arbeid</th><th>Basiskost</th><th>Extra</th><th>Totale kost (excl)</th><th>Verkoop berekend (excl)</th><th>Verkoop berekend (incl)</th><th>Prijs in collectie</th><th>Actie</th></tr></thead><tbody>${rows}</tbody>`;
+  }
+  async function applyPrice(pid, sellIncl){
+    const rounded=Math.ceil(+sellIncl); // afgerond naar hele euro naar boven
+    const nieuw='€'+rounded;
+    if(!confirm('Prijs in de collectie op '+nieuw+' zetten (incl. btw)? Je kan het daarna nog aanpassen bij het item.')) return;
+    const { error }=await sb.from('products').update({prijs:nieuw}).eq('id',pid);
+    if(error){ alert('Mislukt: '+error.message); return; }
+    const it=items.find(x=>x.id===pid); if(it) it.prijs=nieuw;
+    renderCalcTable(); renderList();
   }
 
   document.getElementById('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') closeEditor(); });
