@@ -453,7 +453,7 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
     const files=[...ev.target.files]; ev.target.value='';
     const lbl=document.getElementById('f-filebtn'); const orig=lbl.innerHTML; lbl.style.pointerEvents='none'; lbl.firstChild.textContent='Uploaden…';
     for(const f of files){ try{ const url=await uploadPhoto(f,'products'); draftFotos.push(url); renderFotos(); }catch(e){ alert('Upload mislukt: '+(e.message||e)); } }
-    lbl.innerHTML=orig;
+    lbl.innerHTML=orig; lbl.style.pointerEvents='';
   }
 
   async function saveEditor(){
@@ -535,7 +535,7 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
     const files=[...ev.target.files]; ev.target.value='';
     const lbl=document.getElementById('g-filebtn'); const orig=lbl.innerHTML; lbl.style.pointerEvents='none'; lbl.firstChild.textContent='Uploaden…';
     for(const f of files){ try{ draftGalFotos.push(await uploadPhoto(f,'gallery')); renderGalFotos(); }catch(e){ alert('Upload mislukt: '+(e.message||e)); } }
-    lbl.innerHTML=orig;
+    lbl.innerHTML=orig; lbl.style.pointerEvents='';
   }
   async function saveGal(){
     if(!draftGalFotos.length){ alert('Voeg minstens één foto toe.'); return; }
