@@ -244,6 +244,19 @@
   </div>
 </div>
 
+<!-- SITECODE EDITOR -->
+<div class="overlay" id="code-overlay">
+  <div class="modal">
+    <h2>Toegangscode(s) webshop</h2>
+    <p class="hint" style="margin:-6px 0 12px"><b>Eén code per lijn.</b> Elke ingevulde code geeft toegang tot de webshop — handig voor verschillende groepen of klanten. Hoofdletters maken niet uit. Laat het veld <b>leeg</b> om de shop volledig publiek te maken.</p>
+    <div class="fld full"><label>Codes</label><textarea id="code-text" style="min-height:140px" placeholder="bv.
+vrienden2026
+pers
+beurs"></textarea></div>
+    <div class="modal-acts"><button class="btn ghost" onclick="closeCode()">Annuleren</button><button class="btn" id="code-save" onclick="saveCode()">Opslaan</button></div>
+  </div>
+</div>
+
 <script>
   const SUPABASE_URL = "https://vevhvzoemjjvprygtcob.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZldmh2em9lbWpqdnByeWd0Y29iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ0NjQ1NDIsImV4cCI6MjEwMDA0MDU0Mn0.sTDAWiJWLIrTar_LeJQLNjPkzTBgFwDcop_O7EbSPrA";
@@ -550,16 +563,25 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
     finally{ btn.disabled=false; btn.textContent='Opslaan'; }
   }
 
-  /* ---------------- toegangscode ---------------- */
+  /* ---------------- toegangscodes ---------------- */
   async function setAccessCode(){
     let current='';
     try{ const { data } = await sb.from('app_settings').select('value').eq('key','access_code').maybeSingle(); current = data ? (data.value||'') : ''; }
     catch(e){ /* tabel bestaat mogelijk nog niet */ }
-    const nw = prompt('Toegangscode voor de webshop.\nLaat leeg = geen code, shop volledig publiek.', current);
-    if(nw===null) return; // geannuleerd
-    const { error } = await sb.from('app_settings').upsert({ key:'access_code', value:nw.trim() });
-    if(error){ alert('Opslaan mislukt: '+error.message+'\n\nHeb je supabase-access-code.sql al uitgevoerd?'); return; }
-    alert(nw.trim() ? 'Toegangscode opgeslagen. De webshop vraagt nu deze code.' : 'Code leeggemaakt. De webshop is weer publiek.');
+    document.getElementById('code-text').value=current;
+    document.getElementById('code-overlay').classList.add('on');
+  }
+  function closeCode(){ document.getElementById('code-overlay').classList.remove('on'); }
+  async function saveCode(){
+    const raw=document.getElementById('code-text').value;
+    const codes=raw.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean);
+    const value=codes.join('\n'); // één per lijn opslaan
+    const btn=document.getElementById('code-save'); btn.disabled=true; btn.textContent='Opslaan…';
+    const { error } = await sb.from('app_settings').upsert({ key:'access_code', value });
+    btn.disabled=false; btn.textContent='Opslaan';
+    if(error){ alert('Opslaan mislukt: '+error.message+'\n\nHeb je supabase-access-codes-multi.sql al uitgevoerd?'); return; }
+    closeCode();
+    alert(codes.length ? (codes.length+' toegangscode(s) opgeslagen. Elke code geeft toegang tot de webshop.') : 'Alle codes leeggemaakt. De webshop is weer publiek.');
   }
 
   /* ---------------- back-up ---------------- */
@@ -629,6 +651,7 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
   document.getElementById('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') closeEditor(); });
   document.getElementById('gal-overlay').addEventListener('click',e=>{ if(e.target.id==='gal-overlay') closeGal(); });
   document.getElementById('about-overlay').addEventListener('click',e=>{ if(e.target.id==='about-overlay') closeAbout(); });
+  document.getElementById('code-overlay').addEventListener('click',e=>{ if(e.target.id==='code-overlay') closeCode(); });
   initAuth();
 </script>
 </body>
