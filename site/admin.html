@@ -98,6 +98,8 @@
   .calc-table th:first-child,.calc-table td:first-child{text-align:left}
   .calc-table th{background:#f0f3fb;color:var(--navy);font-size:11px;letter-spacing:.03em}
   .calc-table td.muted{text-align:left;color:var(--muted);font-style:italic}
+  .calc-table input.cin{width:78px;font-size:12.5px;border:1px solid var(--line);border-radius:6px;padding:4px 6px;text-align:right;font-family:inherit;background:#fffdf5}
+  .calc-table input.cin:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 2px #e7ecfb}
   @media(max-width:620px){.grid2{grid-template-columns:1fr}.assum-grid{grid-template-columns:1fr 1fr}}
 </style>
 </head>
@@ -626,18 +628,30 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
     const filament=grams/1000*eurkg, elec=power/1000*h*CALC.elec, labor=CALC.labor*laborMin/60, deprec=dep*h;
     const subtotal=filament+elec+labor+deprec, waste=subtotal*CALC.waste, base=subtotal+waste;
     const addons=(iv.addons||[]).reduce((s,a)=>s+(+a.kost||0),0), lic=iv.licentie_nodig?(+iv.licentie_kost||0):0;
-    const extra=addons+lic, totalCost=base+extra, sell=base*(1+CALC.margin)+extra;
-    return {h,grams,filament,elec,labor,deprec,waste,base,extra,totalCost,sell,sellIncl:sell*1.21};
+    const computedExtra=addons+lic;
+    const extra=(iv.extra_override===null||iv.extra_override===undefined)?computedExtra:(+iv.extra_override||0);
+    const totalCost=base+extra, sell=base*(1+CALC.margin)+extra;
+    return {h,grams,eurkg,filament,elec,labor,deprec,waste,base,extra,computedExtra,totalCost,sell,sellIncl:sell*1.21};
   }
   function r05(x){ const r=Math.round((+x)/0.05)*0.05; return Math.round(r*100)/100; }
   function eur05(x){ const r=r05(x); return '€'+(r%1===0? String(r): r.toFixed(2)); }
   function renderCalcTable(){
     const rows=items.map(p=>{ const naam=esc(p.naam_nl||'(zonder naam)'); const c=calcRow(p);
       const inColl=esc(p.prijs||'—');
-      if(!c) return `<tr><td>${naam}</td><td colspan="11" class="muted">geen productie-info ingevuld</td><td>${inColl}</td><td></td></tr>`;
-      return `<tr><td>${naam}</td><td>${c.h.toFixed(2)}</td><td>${(+c.grams).toFixed(0)}</td><td>€${c.filament.toFixed(2)}</td><td>€${c.labor.toFixed(2)}</td><td>€${c.elec.toFixed(2)}</td><td>€${c.deprec.toFixed(2)}</td><td>€${c.waste.toFixed(2)}</td><td>€${c.base.toFixed(2)}</td><td>€${c.extra.toFixed(2)}</td><td><b>€${c.totalCost.toFixed(2)}</b></td><td>€${c.sell.toFixed(2)}</td><td>${eur05(c.sellIncl)}</td><td><b>${inColl}</b></td><td><button class="btn ghost sm" onclick="applyPrice('${p.id}',${c.sellIncl.toFixed(2)})">↤ neem over</button></td></tr>`;
+      if(!c) return `<tr><td>${naam}</td><td colspan="13" class="muted">geen productie-info ingevuld</td><td>${inColl}</td><td></td></tr>`;
+      const kgIn=`<input class="cin" type="number" step="0.01" min="0" value="${(+c.eurkg||0)}" onchange="calcSetFilament('${p.id}',this.value)">`;
+      const exIn=`<input class="cin" type="number" step="0.01" min="0" value="${c.extra.toFixed(2)}" title="Pas de extra aan (excl. btw). Leegmaken = som van de add-ons uit het item." onchange="calcSetExtra('${p.id}',this.value)">`;
+      return `<tr><td>${naam}</td><td>${c.h.toFixed(2)}</td><td>${(+c.grams).toFixed(0)}</td><td>${kgIn}</td><td>€${c.filament.toFixed(2)}</td><td>€${c.labor.toFixed(2)}</td><td>€${c.elec.toFixed(2)}</td><td>€${c.deprec.toFixed(2)}</td><td>€${c.waste.toFixed(2)}</td><td>€${c.base.toFixed(2)}</td><td>${exIn}</td><td><b>€${c.totalCost.toFixed(2)}</b></td><td>€${c.sell.toFixed(2)}</td><td>${eur05(c.sellIncl)}</td><td><b>${inColl}</b></td><td><button class="btn ghost sm" onclick="applyPrice('${p.id}',${c.sellIncl.toFixed(2)})">↤ neem over</button></td></tr>`;
     }).join('');
-    document.getElementById('calc-table').innerHTML=`<thead><tr><th>Item</th><th>Uren</th><th>Gram</th><th>Filament</th><th>Arbeid</th><th>Elektr.</th><th>Afschr.</th><th>Waste</th><th>Basiskost</th><th>Extra</th><th>Totale kost (excl)</th><th>Verkoop berekend (excl)</th><th>Verkoop berekend (incl)</th><th>Prijs in collectie</th><th>Actie</th></tr></thead><tbody>${rows}</tbody>`;
+    document.getElementById('calc-table').innerHTML=`<thead><tr><th>Item</th><th>Uren</th><th>Gram</th><th>€/kg</th><th>Filament</th><th>Arbeid</th><th>Elektr.</th><th>Afschr.</th><th>Waste</th><th>Basiskost</th><th>Extra (excl)</th><th>Totale kost (excl)</th><th>Verkoop berekend (excl)</th><th>Verkoop berekend (incl)</th><th>Prijs in collectie</th><th>Actie</th></tr></thead><tbody>${rows}</tbody>`;
+  }
+  async function calcSetFilament(pid,val){
+    const v=+val||0; if(intern[pid]) intern[pid].filament_eur_kg=v; renderCalcTable();
+    try{ await sb.from('product_intern').update({filament_eur_kg:v}).eq('product_id',pid); }catch(e){ alert('Opslaan mislukt: '+(e.message||e)); }
+  }
+  async function calcSetExtra(pid,valStr){
+    const v=(valStr===''||valStr==null)?null:(+valStr||0); if(intern[pid]) intern[pid].extra_override=v; renderCalcTable();
+    try{ await sb.from('product_intern').update({extra_override:v}).eq('product_id',pid); }catch(e){ alert('Opslaan mislukt: '+(e.message||e)); }
   }
   async function applyPrice(pid, sellIncl){
     const nieuw=eur05(sellIncl); // afgerond op stappen van 0,05
