@@ -100,6 +100,10 @@
   .calc-table td.muted{text-align:left;color:var(--muted);font-style:italic}
   .calc-table input.cin{width:78px;font-size:12.5px;border:1px solid var(--line);border-radius:6px;padding:4px 6px;text-align:right;font-family:inherit;background:#fffdf5}
   .calc-table input.cin:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 2px #e7ecfb}
+  .drag-h{color:#b9c0d4;font-size:18px;flex:none;cursor:grab;user-select:none;padding:0 2px}
+  .row[draggable]{cursor:default}
+  .row.dragging{opacity:.45}
+  .row.drop-target{border-color:var(--blue);box-shadow:0 0 0 2px #e7ecfb}
   @media(max-width:620px){.grid2{grid-template-columns:1fr}.assum-grid{grid-template-columns:1fr 1fr}}
 </style>
 </head>
@@ -406,7 +410,7 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
       const statusPill=p.status==='uitverkocht'?'<span class="pill uitverkocht">Uitverkocht</span>':(p.status==='terug'&&!beschikbaar(p))?`<span class="pill terug">Terug vanaf ${fmtDatum(p.terug_vanaf)}</span>`:'<span class="pill bestel">Bestelbaar</span>';
       const nieuw=p.nieuw?'<span class="pill nieuw">Nieuw</span>':'';
       const sw=(p.kleuren||[]).map(k=>`<span class="swat" title="${esc(k)}" style="background:${KLEUR_HEX[(k||'').toLowerCase()]||'#ccc'}"></span>`).join(' ');
-      return `<div class="row"><div class="th">${th}</div><div class="info"><div class="nm">${esc(p.naam_nl||'(zonder naam)')} <span style="color:var(--muted);font-weight:500">· ${esc(p.prijs)}</span></div><div class="sub">${statusPill}${nieuw}<span>${USE_LABEL[p.gebruik]||''}</span><span>${sw}</span>${p.fotos&&p.fotos.length>1?`<span>${p.fotos.length} foto's</span>`:''}</div></div>
+      return `<div class="row" draggable="true" data-idx="${i}"><span class="drag-h" title="Sleep om te herschikken">⠿</span><div class="th">${th}</div><div class="info"><div class="nm">${esc(p.naam_nl||'(zonder naam)')} <span style="color:var(--muted);font-weight:500">· ${esc(p.prijs)}</span></div><div class="sub">${statusPill}${nieuw}<span>${USE_LABEL[p.gebruik]||''}</span><span>${sw}</span>${p.fotos&&p.fotos.length>1?`<span>${p.fotos.length} foto's</span>`:''}</div></div>
       <div class="acts"><button class="btn icon" onclick="move(${i},-1)">↑</button><button class="btn icon" onclick="move(${i},1)">↓</button><button class="btn ghost sm" onclick="openEditor(${i})">Bewerk</button><button class="btn danger sm" onclick="del(${i})">Verwijder</button></div></div>`;
     }).join('');
   }
@@ -666,6 +670,13 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
   document.getElementById('gal-overlay').addEventListener('click',e=>{ if(e.target.id==='gal-overlay') closeGal(); });
   document.getElementById('about-overlay').addEventListener('click',e=>{ if(e.target.id==='about-overlay') closeAbout(); });
   document.getElementById('code-overlay').addEventListener('click',e=>{ if(e.target.id==='code-overlay') closeCode(); });
+  // drag & drop volgorde collectie
+  let dragIdx=null;
+  const listEl=document.getElementById('list');
+  listEl.addEventListener('dragstart',e=>{ const row=e.target.closest('.row[draggable]'); if(!row)return; dragIdx=+row.dataset.idx; e.dataTransfer.effectAllowed='move'; row.classList.add('dragging'); });
+  listEl.addEventListener('dragover',e=>{ if(dragIdx==null)return; e.preventDefault(); const row=e.target.closest('.row[draggable]'); listEl.querySelectorAll('.row.drop-target').forEach(r=>r.classList.remove('drop-target')); if(row) row.classList.add('drop-target'); });
+  listEl.addEventListener('drop',async e=>{ if(dragIdx==null)return; e.preventDefault(); const row=e.target.closest('.row[draggable]'); if(!row){dragIdx=null;return;} const target=+row.dataset.idx; const from=dragIdx; dragIdx=null; if(target===from)return; const [moved]=items.splice(from,1); items.splice(target,0,moved); renderList(); await persistOrder('products',items); });
+  listEl.addEventListener('dragend',()=>{ dragIdx=null; listEl.querySelectorAll('.row').forEach(r=>r.classList.remove('dragging','drop-target')); });
   initAuth();
 </script>
 </body>
