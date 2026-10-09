@@ -748,12 +748,12 @@
     try{
       const { data, error } = await SB.rpc('check_access_code',{code});
       if(error) throw error;
-      if(data===true){ localStorage.setItem('bt_access_ok','1'); unlockShop(); }
+      if(data===true){ sessionStorage.setItem('bt_access_ok','1'); unlockShop(); }
       else err.textContent=tr('gate_err');
     }catch(e){ console.error(e); err.textContent=tr('gate_err'); }
   }
   async function gateInit(){
-    if(localStorage.getItem('bt_access_ok')==='1'){ unlockShop(); return; }
+    if(sessionStorage.getItem('bt_access_ok')==='1'){ unlockShop(); return; }
     try{
       const { data, error } = await SB.rpc('check_access_code',{code:''});
       if(!error && data===true){ unlockShop(); return; } // geen code ingesteld -> shop open
@@ -766,6 +766,40 @@
   render();
   onScroll();
   gateInit();
+</script>
+<script>
+/* Tellen zonder cookies: bezoek en kliks op items. */
+(function(){
+  function tel(s,n){
+    try{ var i=new Image(1,1); i.src="tel.php?s="+s+"&n="+encodeURIComponent(n)+"&r="+Math.random(); }catch(e){}
+  }
+  function slug(t){
+    return (t||"").toLowerCase()
+      .replace(/[\u00e0-\u00e5]/g,"a").replace(/[\u00e8-\u00eb]/g,"e")
+      .replace(/[\u00ec-\u00ef]/g,"i").replace(/[\u00f2-\u00f6]/g,"o")
+      .replace(/[\u00f9-\u00fc]/g,"u").replace(/\u00e7/g,"c")
+      .replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+""/g,"").slice(0,46);
+  }
+  tel("p","home");
+  document.addEventListener("click", function(e){
+    var t = e.target;
+    if(!t || !t.closest) return;
+    var p = t.closest(".product");
+    if(p){
+      var k = p.querySelector("h3,h4,.naam,.titel");
+      var s = slug(k ? k.textContent : "");
+      if(!s) s = "nr-" + (p.getAttribute("data-pi") || "?");
+      tel("k", "item/" + s);
+      return;
+    }
+    var a = t.closest("a");
+    if(!a) return;
+    var h = a.getAttribute("href") || "";
+    if(h.indexOf("mailto:") === 0) tel("k","mailadres");
+    else if(h.indexOf("#bestellen") > -1) tel("k","bestellen");
+    else if(h.indexOf("#maatwerk") > -1) tel("k","maatwerk");
+  }, true);
+})();
 </script>
 </body>
 </html>
