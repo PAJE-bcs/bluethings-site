@@ -42,6 +42,7 @@
   .pill.uitverkocht{background:#f7e7e7;color:var(--bad)}
   .pill.terug{background:#fbf0da;color:var(--warn)}
   .pill.nieuw{background:#e7ecfb;color:var(--blue)}
+  .pill.offline{background:#e5e7eb;color:#4b5563}
   .swat{width:13px;height:13px;border-radius:50%;border:1px solid rgba(10,26,79,.25);display:inline-block;vertical-align:middle}
   .row .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
   .overlay{position:fixed;inset:0;background:rgba(10,26,79,.35);display:none;align-items:flex-start;justify-content:center;padding:24px;z-index:40;overflow:auto}
@@ -189,7 +190,7 @@
         <select id="f-gebruik"><option value="binnen">Binnengebruik</option><option value="buiten">Buitengebruik</option><option value="beide">Binnen &amp; buiten</option></select>
       </div>
       <div class="fld"><label>Status</label>
-        <select id="f-status" onchange="toggleTerug()"><option value="bestel">Bestel (beschikbaar)</option><option value="uitverkocht">Uitverkocht</option><option value="terug">Terug vanaf…</option></select>
+        <select id="f-status" onchange="toggleTerug()"><option value="bestel">Bestel (beschikbaar)</option><option value="uitverkocht">Uitverkocht</option><option value="terug">Terug vanaf…</option><option value="offline">Offline (verborgen op site)</option></select>
         <div class="terug-wrap" id="terug-wrap" style="display:none"><input type="date" id="f-terug"><div class="hint">Wordt op de site automatisch weer bestelbaar vanaf deze datum.</div></div>
       </div>
       <div class="fld"><label class="check"><input type="checkbox" id="f-nieuw"> Label “Nieuw” tonen</label></div>
@@ -407,7 +408,7 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
     if(!items.length){ el.innerHTML='<div class="row"><div class="info">Nog geen items. Klik “+ Nieuw item”.</div></div>'; return; }
     el.innerHTML=items.map((p,i)=>{
       const th=(p.fotos&&p.fotos.length)?`<img src="${p.fotos[0]}" alt="">`:'geen foto';
-      const statusPill=p.status==='uitverkocht'?'<span class="pill uitverkocht">Uitverkocht</span>':(p.status==='terug'&&!beschikbaar(p))?`<span class="pill terug">Terug vanaf ${fmtDatum(p.terug_vanaf)}</span>`:'<span class="pill bestel">Bestelbaar</span>';
+      const statusPill=p.status==='offline'?'<span class="pill offline">Offline</span>':p.status==='uitverkocht'?'<span class="pill uitverkocht">Uitverkocht</span>':(p.status==='terug'&&!beschikbaar(p))?`<span class="pill terug">Terug vanaf ${fmtDatum(p.terug_vanaf)}</span>`:'<span class="pill bestel">Bestelbaar</span>';
       const nieuw=p.nieuw?'<span class="pill nieuw">Nieuw</span>':'';
       const sw=(p.kleuren||[]).map(k=>`<span class="swat" title="${esc(k)}" style="background:${KLEUR_HEX[(k||'').toLowerCase()]||'#ccc'}"></span>`).join(' ');
       return `<div class="row" draggable="true" data-idx="${i}"><span class="drag-h" title="Sleep om te herschikken">⠿</span><div class="th">${th}</div><div class="info"><div class="nm">${esc(p.naam_nl||'(zonder naam)')} <span style="color:var(--muted);font-weight:500">· ${esc(p.prijs)}</span></div><div class="sub">${statusPill}${nieuw}<span>${USE_LABEL[p.gebruik]||''}</span><span>${sw}</span>${p.fotos&&p.fotos.length>1?`<span>${p.fotos.length} foto's</span>`:''}</div></div>
@@ -645,7 +646,8 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
       if(!c) return `<tr><td>${naam}</td><td colspan="13" class="muted">geen productie-info ingevuld</td><td>${inColl}</td><td></td></tr>`;
       const kgIn=`<input class="cin" type="number" step="0.01" min="0" value="${(+c.eurkg||0)}" onchange="calcSetFilament('${p.id}',this.value)">`;
       const exIn=`<input class="cin" type="number" step="0.01" min="0" value="${c.extra.toFixed(2)}" title="Pas de extra aan (excl. btw). Leegmaken = som van de add-ons uit het item." onchange="calcSetExtra('${p.id}',this.value)">`;
-      return `<tr><td>${naam}</td><td>${c.h.toFixed(2)}</td><td>${(+c.grams).toFixed(0)}</td><td>${kgIn}</td><td>€${c.filament.toFixed(2)}</td><td>€${c.labor.toFixed(2)}</td><td>€${c.elec.toFixed(2)}</td><td>€${c.deprec.toFixed(2)}</td><td>€${c.waste.toFixed(2)}</td><td>€${c.base.toFixed(2)}</td><td>${exIn}</td><td><b>€${c.totalCost.toFixed(2)}</b></td><td>€${c.sell.toFixed(2)}</td><td>${eur05(c.sellIncl)}</td><td><b>${inColl}</b></td><td><button class="btn ghost sm" onclick="applyPrice('${p.id}',${c.sellIncl.toFixed(2)})">↤ neem over</button></td></tr>`;
+      const prijsIn=`<input class="cin" type="number" step="0.05" min="0" id="take-${p.id}" value="${r05(c.sellIncl)}" title="Pas de prijs aan voor je ze overneemt naar de collectie (incl. btw).">`;
+      return `<tr><td>${naam}</td><td>${c.h.toFixed(2)}</td><td>${(+c.grams).toFixed(0)}</td><td>${kgIn}</td><td>€${c.filament.toFixed(2)}</td><td>€${c.labor.toFixed(2)}</td><td>€${c.elec.toFixed(2)}</td><td>€${c.deprec.toFixed(2)}</td><td>€${c.waste.toFixed(2)}</td><td>€${c.base.toFixed(2)}</td><td>${exIn}</td><td><b>€${c.totalCost.toFixed(2)}</b></td><td>€${c.sell.toFixed(2)}</td><td>${eur05(c.sellIncl)}</td><td><b>${inColl}</b></td><td>${prijsIn}<button class="btn ghost sm" onclick="applyPrice('${p.id}')">↤ neem over</button></td></tr>`;
     }).join('');
     document.getElementById('calc-table').innerHTML=`<thead><tr><th>Item</th><th>Uren</th><th>Gram</th><th>€/kg</th><th>Filament</th><th>Arbeid</th><th>Elektr.</th><th>Afschr.</th><th>Waste</th><th>Basiskost</th><th>Extra (excl)</th><th>Totale kost (excl)</th><th>Verkoop berekend (excl)</th><th>Verkoop berekend (incl)</th><th>Prijs in collectie</th><th>Actie</th></tr></thead><tbody>${rows}</tbody>`;
   }
@@ -657,8 +659,10 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
     const v=(valStr===''||valStr==null)?null:(+valStr||0); if(intern[pid]) intern[pid].extra_override=v; renderCalcTable();
     try{ await sb.from('product_intern').update({extra_override:v}).eq('product_id',pid); }catch(e){ alert('Opslaan mislukt: '+(e.message||e)); }
   }
-  async function applyPrice(pid, sellIncl){
-    const nieuw=eur05(sellIncl); // afgerond op stappen van 0,05
+  async function applyPrice(pid){
+    const inp=document.getElementById('take-'+pid);
+    const bedrag=inp? (+inp.value||0) : 0;
+    const nieuw='€'+(bedrag%1===0? String(bedrag): bedrag.toFixed(2));
     if(!confirm('Prijs in de collectie op '+nieuw+' zetten (incl. btw)? Je kan het daarna nog aanpassen bij het item.')) return;
     const { error }=await sb.from('products').update({prijs:nieuw}).eq('id',pid);
     if(error){ alert('Mislukt: '+error.message); return; }

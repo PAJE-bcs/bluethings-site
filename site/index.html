@@ -723,7 +723,7 @@
       ]);
       if(pr.error) throw pr.error;
       if(!ct.error && ct.data){ CONTENT={}; ct.data.forEach(r=>CONTENT[r.key]=r.value); applyAbout(); }
-      PRODUCTEN = (pr.data||[]).map(r=>({
+      PRODUCTEN = (pr.data||[]).filter(r=>r.status!=='offline').map(r=>({
         id:r.id, prijs:r.prijs||'', status:r.status||'bestel', terugVanaf:r.terug_vanaf||'', nieuw:!!r.nieuw,
         gebruik:r.gebruik||'beide', kleuren:r.kleuren||[], fotos:r.fotos||[],
         naam_nl:r.naam_nl||'', naam_en:r.naam_en||'', naam_fr:r.naam_fr||'',
