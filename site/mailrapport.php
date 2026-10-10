@@ -40,6 +40,16 @@ if ($forceer && isset($_GET['waar'])) {
     exit;
 }
 
+// Teller op nul zetten voor de lopende periode.
+if ($forceer && isset($_GET['nul'])) {
+    $m = tel_map();
+    if ($m === null) { http_response_code(500); exit('geen datamap'); }
+    $w = tel_periode();
+    file_put_contents($m . '/' . TEL_SITE . '-' . $w . '.json',
+        json_encode(['p' => new stdClass(), 'k' => new stdClass()]));
+    exit('teller op nul voor ' . $w . PHP_EOL);
+}
+
 $periode = ($forceer && isset($_GET['nu'])) ? tel_periode() : tel_periode(1);
 
 $map = tel_map();
