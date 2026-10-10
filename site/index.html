@@ -561,6 +561,7 @@
   const LOC={nl:'nl-BE',en:'en-GB',fr:'fr-BE'};
   function fmtDatum(s){ if(!s)return''; const d=new Date(s+'T00:00:00'); return isNaN(d)?s:d.toLocaleDateString(LOC[lang]||'nl-BE',{day:'numeric',month:'short',year:'numeric'}); }
   function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  let BANNERDEF={}; // label -> kleur (live uit de beheerde lijst)
   const METAL={gold:{bg:'linear-gradient(135deg,#bf953f 0%,#fcf6ba 42%,#b38728 52%,#fbf5b7 72%,#aa771c 100%)',fg:'#4a3800',sh:'rgba(255,255,255,.5)'},silver:{bg:'linear-gradient(135deg,#9a9a9a 0%,#f4f4f4 42%,#a8a8a8 52%,#f0f0f0 72%,#808080 100%)',fg:'#333',sh:'rgba(255,255,255,.6)'}};
   function bannerStyle(kl){ const m=METAL[(kl||'').toLowerCase()]; if(m) return `background:${m.bg};color:${m.fg};text-shadow:0 1px 0 ${m.sh}`; return `background:${esc(kl)};color:#fff`; }
 
@@ -628,7 +629,7 @@
       else if(p.status==='terug' && !avail) badges.push(`<span class="badge terug">${tr('badge_terug')} ${fmtDatum(p.terugVanaf)}</span>`);
       const badgeBox=badges.length?`<div class="badges">${badges.join('')}</div>`:'';
       const bannerList=(p.banners||[]).filter(b=>b&&(typeof b==='string'||b.label));
-      const ribbonBox=bannerList.length?`<div class="ribbons">${bannerList.slice(0,3).map((b,ri)=>{const lbl=typeof b==='string'?b:b.label;const kl=typeof b==='string'?'#1b46c2':(b.kleur||'#1b46c2');return `<span class="ribbon ribbon-${ri}" style="${bannerStyle(kl)}">${esc(lbl)}</span>`;}).join('')}</div>`:'';
+      const ribbonBox=bannerList.length?`<div class="ribbons">${bannerList.slice(0,3).map((b,ri)=>{const lbl=typeof b==='string'?b:b.label;const stored=typeof b==='string'?'':(b.kleur||'');const kl=(BANNERDEF[lbl]!=null?BANNERDEF[lbl]:(stored||'#1b46c2'));return `<span class="ribbon ribbon-${ri}" style="${bannerStyle(kl)}">${esc(lbl)}</span>`;}).join('')}</div>`:'';
       const btn=avail?`<button class="pick" data-label="${esc(pNaam(p))} (${p.prijs})">${tr('card_bestel')}</button>`:`<button class="pick disabled">${p.status==='uitverkocht'?tr('pick_uit'):tr('pick_terug')}</button>`;
       const use=p.gebruik?`<span class="use"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 10l9-7 9 7v9a1 1 0 0 1-1 1h-4v-6H8v6H4a1 1 0 0 1-1-1z"/></svg>${(USE_LABEL[lang]||USE_LABEL.nl)[p.gebruik]||p.gebruik}</span>`:'';
       const swatches=(p.kleuren||[]).map(k=>`<span class="swatch" title="${esc(kleurNaam(k))}" style="background:${KLEUR_HEX[(k||'').toLowerCase()]||'#ccc'}"></span>`).join('');
@@ -725,12 +726,14 @@
   // live data uit Supabase
   async function loadData(){
     try{
-      const [pr, gl, ct] = await Promise.all([
+      const [pr, gl, ct, bn] = await Promise.all([
         SB.from('products').select('*').order('sort',{ascending:true}),
         SB.from('gallery').select('*').order('sort',{ascending:true}),
-        SB.from('site_content').select('*')
+        SB.from('site_content').select('*'),
+        SB.from('app_settings').select('value').eq('key','banners').maybeSingle()
       ]);
       if(pr.error) throw pr.error;
+      BANNERDEF={}; try{ if(bn&&!bn.error&&bn.data&&bn.data.value){ (JSON.parse(bn.data.value)||[]).forEach(b=>{ if(b&&b.label) BANNERDEF[b.label]=b.kleur||'#1b46c2'; }); } }catch(e){}
       if(!ct.error && ct.data){ CONTENT={}; ct.data.forEach(r=>CONTENT[r.key]=r.value); applyAbout(); }
       PRODUCTEN = (pr.data||[]).filter(r=>r.status!=='offline').map(r=>({
         id:r.id, prijs:r.prijs||'', status:r.status||'bestel', terugVanaf:r.terug_vanaf||'', nieuw:!!r.nieuw, banners:r.banners||[],
