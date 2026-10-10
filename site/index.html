@@ -93,7 +93,7 @@
   .product{background:var(--paper);border:1px solid var(--line);border-radius:6px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 18px 40px -30px rgba(10,26,79,.45);transition:transform .2s,box-shadow .2s}
   .product:hover{transform:translateY(-3px);box-shadow:0 26px 48px -30px rgba(10,26,79,.5)}
   .product .thumb{aspect-ratio:4/3;background:#eef1fb;display:flex;align-items:center;justify-content:center;color:var(--navy);position:relative;overflow:hidden}
-  .product .thumb img{width:100%;height:100%;object-fit:contain;display:block;cursor:zoom-in}
+  .product .thumb img{width:100%;height:100%;object-fit:contain;display:block;cursor:zoom-in;transition:opacity .35s ease}
   .product .thumb .ph{font-family:'Montserrat',sans-serif;font-size:10px;letter-spacing:.22em;text-transform:uppercase;opacity:.55}
   .product .badges{position:absolute;top:12px;left:12px;display:flex;flex-direction:column;gap:6px;align-items:flex-start;z-index:3}
   .product .badge{font-family:'Montserrat',sans-serif;font-size:9px;letter-spacing:.14em;text-transform:uppercase;background:var(--blue);color:#fff;padding:5px 9px;border-radius:2px}
@@ -580,12 +580,32 @@
     const card=document.querySelector('.product[data-pi="'+pi+'"]'); if(!card) return;
     const fotos=(PRODUCTEN[pi]&&PRODUCTEN[pi].fotos)||[]; if(!fotos.length) return;
     fi=(fi+fotos.length)%fotos.length;
-    const img=card.querySelector('.thumb img'); if(img){ img.src=fotos[fi]; img.dataset.cur=fi; }
+    const img=card.querySelector('.thumb img');
+    if(img){ img.style.opacity='0'; const show=()=>{img.style.opacity='1';}; img.onload=show; setTimeout(show,420); img.src=fotos[fi]; img.dataset.cur=fi; }
     card.querySelectorAll('.dot').forEach((x,ix)=>x.classList.toggle('on',ix===fi));
   }
   function stepPhoto(pi,dir){
     const card=document.querySelector('.product[data-pi="'+pi+'"]'); const img=card&&card.querySelector('.thumb img');
     setPhoto(pi,(img?+(img.dataset.cur||0):0)+dir);
+  }
+  // automatische fotowissel per item (pauzeert bij hover / verborgen tab / verminderde beweging)
+  let autoTimers=[];
+  function stopAutoRotate(){ autoTimers.forEach(t=>clearInterval(t)); autoTimers=[]; }
+  function startAutoRotate(){
+    stopAutoRotate();
+    if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const INTERVAL=4000;
+    document.querySelectorAll('.product[data-pi]').forEach(card=>{
+      const pi=+card.dataset.pi;
+      const fotos=(PRODUCTEN[pi]&&PRODUCTEN[pi].fotos)||[];
+      if(fotos.length<2) return;
+      let timer=null, hovered=false;
+      const start=()=>{ if(timer||hovered) return; timer=setInterval(()=>stepPhoto(pi,1),INTERVAL); autoTimers.push(timer); };
+      const stop=()=>{ if(timer){ clearInterval(timer); autoTimers=autoTimers.filter(t=>t!==timer); timer=null; } };
+      card.addEventListener('mouseenter',()=>{ hovered=true; stop(); });
+      card.addEventListener('mouseleave',()=>{ hovered=false; start(); });
+      setTimeout(start,(pi%6)*700); // gespreide start zodat niet alles tegelijk wisselt
+    });
   }
   // klantfoto's navigatie
   function galFotos(gi){ const k=KLANTEN[gi]||{}; return (k.fotos&&k.fotos.length)?k.fotos:(k.foto?[k.foto]:[]); }
@@ -613,6 +633,7 @@
   }
   function closeLightbox(){ document.getElementById('lightbox').classList.remove('on'); }
   document.getElementById('lightbox').addEventListener('click',e=>{ if(e.target.id==='lightbox') closeLightbox(); });
+  document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopAutoRotate(); else startAutoRotate(); });
   document.addEventListener('keydown',e=>{ if(!document.getElementById('lightbox').classList.contains('on'))return; if(e.key==='Escape')closeLightbox(); if(e.key==='ArrowLeft')lbStep(-1); if(e.key==='ArrowRight')lbStep(1); });
 
   function render(){
@@ -641,6 +662,7 @@
     document.querySelectorAll('.product .dot').forEach(d=>{ d.addEventListener('click',()=>setPhoto(+d.dataset.pi,+d.dataset.fi)); });
     document.querySelectorAll('.product .nav-arrow').forEach(b=>{ b.addEventListener('click',e=>{ e.stopPropagation(); stepPhoto(+b.dataset.pi,+b.dataset.dir); }); });
     document.querySelectorAll('.product .thumb img[data-pi]').forEach(im=>{ im.addEventListener('click',()=>openLightbox((PRODUCTEN[+im.dataset.pi]||{}).fotos||[],+(im.dataset.cur||0))); });
+    startAutoRotate();
 
     // dropdown
     const prodSel=document.getElementById('product');
