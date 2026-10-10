@@ -23,6 +23,29 @@ const INKT      = '#2c3550';
 header('Content-Type: text/plain; charset=utf-8');
 
 $forceer = hash_equals(SLEUTEL, (string) ($_GET['sleutel'] ?? ''));
+
+// Diagnose: waar komt de data terecht en wat staat er in.
+if ($forceer && isset($_GET['waar'])) {
+    $root = rtrim((string) ($_SERVER['DOCUMENT_ROOT'] ?? ''), '/');
+    echo 'DOCUMENT_ROOT  ' . $root . PHP_EOL;
+    echo 'script         ' . __DIR__ . PHP_EOL;
+    echo 'ouder van root ' . dirname($root) . ' | schrijfbaar ' .
+         (is_writable(dirname($root)) ? 'ja' : 'nee') . PHP_EOL . PHP_EOL;
+    foreach ([dirname($root) . '/bt-stats', $root . '/bt-stats',
+              dirname(__DIR__) . '/bt-stats', __DIR__ . '/bt-stats'] as $m) {
+        echo str_pad($m, 46) . ' dir ' . (is_dir($m) ? 'ja ' : 'nee') .
+             ' schrijfbaar ' . (is_writable($m) ? 'ja' : 'nee') . PHP_EOL;
+    }
+    $g = tel_map();
+    echo PHP_EOL . 'gekozen        ' . var_export($g, true) . PHP_EOL;
+    $f = $g ? glob($g . '/*') : [];
+    foreach ($f ?: [] as $x) {
+        echo '  ' . str_pad(basename($x), 36) . filesize($x) . ' bytes  ' .
+             gmdate('Y-m-d H:i', filemtime($x)) . PHP_EOL;
+    }
+    exit;
+}
+
 $periode = ($forceer && isset($_GET['nu'])) ? tel_periode() : tel_periode(1);
 
 $map = tel_map();
