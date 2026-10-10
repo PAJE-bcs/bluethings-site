@@ -784,12 +784,12 @@
     try{
       const { data, error } = await SB.rpc('check_access_code',{code});
       if(error) throw error;
-      if(data===true){ localStorage.setItem('bt_access_ok','1'); unlockShop(); }
+      if(data===true){ sessionStorage.setItem('bt_access_ok','1'); unlockShop(); }
       else { err.textContent=tr('gate_err'); forgot.style.display='block'; }
     }catch(e){ console.error(e); err.textContent=tr('gate_err'); forgot.style.display='block'; }
   }
   async function gateInit(){
-    if(localStorage.getItem('bt_access_ok')==='1'){ unlockShop(); return; }
+    if(sessionStorage.getItem('bt_access_ok')==='1'){ unlockShop(); return; }
     try{
       const { data, error } = await SB.rpc('check_access_code',{code:''});
       if(!error && data===true){ unlockShop(); return; } // geen code ingesteld -> shop open
