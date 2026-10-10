@@ -66,7 +66,9 @@
   .colors label.on{border-color:var(--blue);background:#f2f5ff}
   .colors input{display:none}
   .fotos{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
-  .foto{position:relative;width:84px;height:84px;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+  .foto{position:relative;width:84px;height:84px;border-radius:8px;overflow:hidden;border:1px solid var(--line);cursor:grab}
+  .foto.dragging{opacity:.4}
+  .foto.drop-target{outline:2px solid var(--blue);outline-offset:1px}
   .foto img{width:100%;height:100%;object-fit:cover}
   .foto .x{position:absolute;top:2px;right:2px;background:rgba(178,59,59,.92);color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:1}
   .foto .mv{position:absolute;bottom:2px;left:2px;display:flex;gap:2px}
@@ -612,7 +614,7 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
   function toggleLic(){ const on=document.getElementById('f-lic').checked; document.getElementById('f-lic-wrap').style.display=on?'':'none'; document.getElementById('f-lic-det-wrap').style.display=on?'':'none'; }
   function readAddons(){ return [...document.querySelectorAll('#f-addons .addon-row')].map(r=>({naam:r.querySelector('.a-naam').value.trim(),kost:+r.querySelector('.a-kost').value||0})).filter(a=>a.naam||a.kost); }
   function renderFotos(){
-    document.getElementById('f-fotos').innerHTML=draftFotos.map((f,i)=>`<div class="foto ${i===0?'first':''}"><img src="${f}" alt=""><button class="x" onclick="rmFoto(${i})">×</button><div class="mv">${i>0?`<button onclick="mvFoto(${i},-1)">‹</button>`:''}${i<draftFotos.length-1?`<button onclick="mvFoto(${i},1)">›</button>`:''}</div></div>`).join('');
+    document.getElementById('f-fotos').innerHTML=draftFotos.map((f,i)=>`<div class="foto ${i===0?'first':''}" draggable="true" data-fidx="${i}" title="Sleep om te herschikken"><img src="${f}" alt="" draggable="false"><button class="x" onclick="rmFoto(${i})">×</button><div class="mv">${i>0?`<button onclick="mvFoto(${i},-1)">‹</button>`:''}${i<draftFotos.length-1?`<button onclick="mvFoto(${i},1)">›</button>`:''}</div></div>`).join('');
   }
   function rmFoto(i){ draftFotos.splice(i,1); renderFotos(); }
   function mvFoto(i,d){ const j=i+d; if(j<0||j>=draftFotos.length)return; [draftFotos[i],draftFotos[j]]=[draftFotos[j],draftFotos[i]]; renderFotos(); }
@@ -832,6 +834,13 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
   listEl.addEventListener('dragover',e=>{ if(dragIdx==null)return; e.preventDefault(); const row=e.target.closest('.row[draggable]'); listEl.querySelectorAll('.row.drop-target').forEach(r=>r.classList.remove('drop-target')); if(row) row.classList.add('drop-target'); });
   listEl.addEventListener('drop',async e=>{ if(dragIdx==null)return; e.preventDefault(); const row=e.target.closest('.row[draggable]'); if(!row){dragIdx=null;return;} const target=+row.dataset.idx; const from=dragIdx; dragIdx=null; if(target===from)return; const [moved]=items.splice(from,1); items.splice(target,0,moved); renderList(); await persistOrder('products',items); });
   listEl.addEventListener('dragend',()=>{ dragIdx=null; listEl.querySelectorAll('.row').forEach(r=>r.classList.remove('dragging','drop-target')); });
+  // drag & drop volgorde foto's in de item-editor
+  let fDragIdx=null;
+  const fotosEl=document.getElementById('f-fotos');
+  fotosEl.addEventListener('dragstart',e=>{ const c=e.target.closest('.foto[draggable]'); if(!c)return; fDragIdx=+c.dataset.fidx; e.dataTransfer.effectAllowed='move'; c.classList.add('dragging'); });
+  fotosEl.addEventListener('dragover',e=>{ if(fDragIdx==null)return; e.preventDefault(); const c=e.target.closest('.foto[draggable]'); fotosEl.querySelectorAll('.foto.drop-target').forEach(x=>x.classList.remove('drop-target')); if(c) c.classList.add('drop-target'); });
+  fotosEl.addEventListener('drop',e=>{ if(fDragIdx==null)return; e.preventDefault(); const c=e.target.closest('.foto[draggable]'); if(!c){fDragIdx=null;return;} const target=+c.dataset.fidx, from=fDragIdx; fDragIdx=null; if(target===from)return; const [m]=draftFotos.splice(from,1); draftFotos.splice(target,0,m); renderFotos(); });
+  fotosEl.addEventListener('dragend',()=>{ fDragIdx=null; fotosEl.querySelectorAll('.foto').forEach(x=>x.classList.remove('dragging','drop-target')); });
   initAuth();
 </script>
 </body>
