@@ -22,7 +22,6 @@ jobs:
           port: 21
           server-dir: "www.bluethings.be/www/"
           local-dir: ./site/
-          dangerous-clean-slate: true
           exclude: |
             **/.git*
             **/.git*/**
