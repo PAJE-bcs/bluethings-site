@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Blue Things · Backoffice</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   :root{--blue:#1b46c2;--navy:#0a1a4f;--ink:#1b1d24;--muted:#6b7280;--line:#e3e6ef;--bg:#f5f6fb;--paper:#fff;--ok:#2f8f5b;--warn:#c98a1e;--bad:#b23b3b}
   *{box-sizing:border-box}
@@ -439,9 +440,13 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
       const { data, error } = await sb.auth.mfa.enroll({ factorType:'totp', friendlyName:'Blue Things admin '+Date.now() });
       if(error) throw error;
       enrollFactorId=data.id;
-      const qr=data.totp.qr_code, secret=data.totp.secret;
-      const qrHtml=/^\s*<svg/i.test(qr)?`<div style="width:180px;height:180px;margin:0 auto">${qr}</div>`:`<img src="${esc(qr)}" alt="QR" style="width:180px;height:180px;display:block;margin:0 auto">`;
-      body.innerHTML=`<p class="hint">Scan deze QR met je authenticator-app (Google Authenticator, Authy, 1Password…), of voer de sleutel handmatig in.</p>${qrHtml}<p style="text-align:center;font-family:monospace;font-size:12px;word-break:break-all;background:#f3f5fb;padding:8px;border-radius:6px;margin:10px 0">${esc(secret)}</p><p class="hint">Voer daarna de 6-cijfercode uit de app in om te bevestigen:</p><input type="text" id="enr-otp" inputmode="numeric" maxlength="6" placeholder="123456" style="width:100%;text-align:center;letter-spacing:.3em;font-size:18px;border:1px solid var(--line);border-radius:8px;padding:10px"><div class="err" id="enr-err" style="color:var(--bad);font-size:13px;min-height:18px"></div><button class="btn" style="width:100%" onclick="confirm2fa()">Bevestigen &amp; inschakelen</button>`;
+      const secret=data.totp.secret, uri=data.totp.uri, qr=data.totp.qr_code;
+      body.innerHTML=`<p class="hint">Scan deze QR met je authenticator-app (Google Authenticator, Authy, 1Password…), of voer de sleutel handmatig in.</p><div id="qrbox" style="width:184px;height:184px;margin:0 auto;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--line);border-radius:8px"></div><p style="text-align:center;font-family:monospace;font-size:12px;word-break:break-all;background:#f3f5fb;padding:8px;border-radius:6px;margin:10px 0">${esc(secret)}</p><p class="hint">Voer daarna de 6-cijfercode uit de app in om te bevestigen:</p><input type="text" id="enr-otp" inputmode="numeric" maxlength="6" placeholder="123456" style="width:100%;text-align:center;letter-spacing:.3em;font-size:18px;border:1px solid var(--line);border-radius:8px;padding:10px"><div class="err" id="enr-err" style="color:var(--bad);font-size:13px;min-height:18px"></div><button class="btn" style="width:100%" onclick="confirm2fa()">Bevestigen &amp; inschakelen</button>`;
+      const box=document.getElementById('qrbox');
+      let drawn=false;
+      try{ if(window.QRCode && uri){ new QRCode(box,{text:uri,width:176,height:176,correctLevel:QRCode.CorrectLevel.M}); drawn=true; } }catch(e){}
+      if(!drawn && qr){ box.innerHTML = /^\s*<svg/i.test(qr) ? qr : `<img src="${esc(qr)}" alt="QR" style="width:176px;height:176px">`; drawn=true; }
+      if(!drawn){ box.innerHTML='<span class="hint" style="padding:8px;text-align:center">QR kon niet getekend worden — gebruik de sleutel hierboven in je app.</span>'; }
       document.getElementById('enr-otp').focus();
     }catch(e){ body.innerHTML='<p class="err">Kon 2FA niet starten: '+esc(e.message||String(e))+'</p>'; }
   }
