@@ -698,7 +698,7 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
   }
   function closeGal(){ document.getElementById('gal-overlay').classList.remove('on'); }
   function renderGalFotos(){
-    document.getElementById('g-foto-prev').innerHTML=draftGalFotos.map((f,i)=>`<div class="foto ${i===0?'first':''}"><img src="${f}" alt=""><button class="x" onclick="rmGalFoto(${i})">×</button><div class="mv">${i>0?`<button onclick="mvGalFoto(${i},-1)">‹</button>`:''}${i<draftGalFotos.length-1?`<button onclick="mvGalFoto(${i},1)">›</button>`:''}</div></div>`).join('');
+    document.getElementById('g-foto-prev').innerHTML=draftGalFotos.map((f,i)=>`<div class="foto ${i===0?'first':''}" draggable="true" data-fidx="${i}" title="Sleep om te herschikken"><img src="${f}" alt="" draggable="false"><button class="x" onclick="rmGalFoto(${i})">×</button><div class="mv">${i>0?`<button onclick="mvGalFoto(${i},-1)">‹</button>`:''}${i<draftGalFotos.length-1?`<button onclick="mvGalFoto(${i},1)">›</button>`:''}</div></div>`).join('');
   }
   function rmGalFoto(i){ draftGalFotos.splice(i,1); renderGalFotos(); }
   function mvGalFoto(i,d){ const j=i+d; if(j<0||j>=draftGalFotos.length)return; [draftGalFotos[i],draftGalFotos[j]]=[draftGalFotos[j],draftGalFotos[i]]; renderGalFotos(); }
@@ -841,6 +841,13 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
   fotosEl.addEventListener('dragover',e=>{ if(fDragIdx==null)return; e.preventDefault(); const c=e.target.closest('.foto[draggable]'); fotosEl.querySelectorAll('.foto.drop-target').forEach(x=>x.classList.remove('drop-target')); if(c) c.classList.add('drop-target'); });
   fotosEl.addEventListener('drop',e=>{ if(fDragIdx==null)return; e.preventDefault(); const c=e.target.closest('.foto[draggable]'); if(!c){fDragIdx=null;return;} const target=+c.dataset.fidx, from=fDragIdx; fDragIdx=null; if(target===from)return; const [m]=draftFotos.splice(from,1); draftFotos.splice(target,0,m); renderFotos(); });
   fotosEl.addEventListener('dragend',()=>{ fDragIdx=null; fotosEl.querySelectorAll('.foto').forEach(x=>x.classList.remove('dragging','drop-target')); });
+  // drag & drop volgorde klantenfoto's (galerij)
+  let gDragIdx=null;
+  const gFotosEl=document.getElementById('g-foto-prev');
+  gFotosEl.addEventListener('dragstart',e=>{ const c=e.target.closest('.foto[draggable]'); if(!c)return; gDragIdx=+c.dataset.fidx; e.dataTransfer.effectAllowed='move'; c.classList.add('dragging'); });
+  gFotosEl.addEventListener('dragover',e=>{ if(gDragIdx==null)return; e.preventDefault(); const c=e.target.closest('.foto[draggable]'); gFotosEl.querySelectorAll('.foto.drop-target').forEach(x=>x.classList.remove('drop-target')); if(c) c.classList.add('drop-target'); });
+  gFotosEl.addEventListener('drop',e=>{ if(gDragIdx==null)return; e.preventDefault(); const c=e.target.closest('.foto[draggable]'); if(!c){gDragIdx=null;return;} const target=+c.dataset.fidx, from=gDragIdx; gDragIdx=null; if(target===from)return; const [m]=draftGalFotos.splice(from,1); draftGalFotos.splice(target,0,m); renderGalFotos(); });
+  gFotosEl.addEventListener('dragend',()=>{ gDragIdx=null; gFotosEl.querySelectorAll('.foto').forEach(x=>x.classList.remove('dragging','drop-target')); });
   initAuth();
 </script>
 </body>
