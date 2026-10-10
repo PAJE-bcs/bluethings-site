@@ -850,6 +850,9 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
   }
   makeFotoDnD(document.getElementById('f-fotos'), ()=>draftFotos, renderFotos);
   makeFotoDnD(document.getElementById('g-foto-prev'), ()=>draftGalFotos, renderGalFotos);
+  // Voorkom dat de browser een gesleepte foto in een nieuwe tab opent wanneer je buiten het kader loslaat.
+  window.addEventListener('dragover',e=>e.preventDefault(),false);
+  window.addEventListener('drop',e=>e.preventDefault(),false);
   initAuth();
 </script>
 </body>
