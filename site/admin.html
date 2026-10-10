@@ -134,6 +134,7 @@
     <a class="btn ghost sm" href="legal.html" target="_blank" rel="noopener">Juridisch ↗</a>
     <button class="btn ghost sm" onclick="openAbout()">Over ons</button>
     <button class="btn ghost sm" onclick="setAccessCode()">Sitecode</button>
+    <button class="btn ghost sm" onclick="openBanners()">Banners</button>
     <button class="btn ghost sm" onclick="doExport()">Back-up ↓</button>
     <button class="btn grey sm" onclick="logout()">Uitloggen</button>
   </div>
@@ -194,6 +195,10 @@
         <div class="terug-wrap" id="terug-wrap" style="display:none"><input type="date" id="f-terug"><div class="hint">Wordt op de site automatisch weer bestelbaar vanaf deze datum.</div></div>
       </div>
       <div class="fld"><label class="check"><input type="checkbox" id="f-nieuw"> Label “Nieuw” tonen</label></div>
+      <div class="fld full"><label>Banners <span class="hint" style="font-weight:400">— diagonaal lint over de foto (meerdere mogelijk)</span></label>
+        <div class="colors" id="f-banners"></div>
+        <div class="hint" id="f-banners-empty" style="display:none">Nog geen banners aangemaakt. Gebruik bovenaan de knop <b>Banners</b>.</div>
+      </div>
       <div class="fld full"><label>Beschikbare kleuren</label>
         <div class="colors" id="f-kleuren"></div>
         <input type="text" id="f-kleuren-extra" placeholder="Extra kleuren (komma-gescheiden)" style="margin-top:8px">
@@ -261,6 +266,15 @@ vrienden2026
 pers
 beurs"></textarea></div>
     <div class="modal-acts"><button class="btn ghost" onclick="closeCode()">Annuleren</button><button class="btn" id="code-save" onclick="saveCode()">Opslaan</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="ban-overlay">
+  <div class="modal">
+    <h2>Banners beheren</h2>
+    <p class="hint" style="margin:-6px 0 12px">Dit zijn de banners die je per item kan aanzetten (bv. <b>Limited Edition</b>, <b>Seasonal</b>). Ze verschijnen als diagonaal lint over de foto. Zelfde tekst in alle talen. Kies per banner een kleur.</p>
+    <div class="fld full"><div id="ban-list"></div><button type="button" class="btn ghost sm" style="margin-top:8px" onclick="addBannerRow()">+ Banner</button></div>
+    <div class="modal-acts"><button class="btn ghost" onclick="closeBanners()">Annuleren</button><button class="btn" id="ban-save" onclick="saveBanners()">Opslaan</button></div>
   </div>
 </div>
 
@@ -380,7 +394,39 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
     else items=(pr.data||[]);
     gallery = gl.error ? [] : (gl.data||[]);
     intern={}; if(!it.error && it.data){ it.data.forEach(r=>intern[r.product_id]=r); }
+    await loadBanners();
     renderList(); renderGal(); loadAbout();
+  }
+
+  /* ---------------- banners ---------------- */
+  let BANNERS=[]; // [{label,kleur}]
+  async function loadBanners(){
+    try{ const {data}=await sb.from('app_settings').select('value').eq('key','banners').maybeSingle();
+      BANNERS = data&&data.value ? (JSON.parse(data.value)||[]) : []; }
+    catch(e){ BANNERS=[]; }
+  }
+  function buildBannerChecks(sel){
+    const box=document.getElementById('f-banners'), empty=document.getElementById('f-banners-empty');
+    if(!BANNERS.length){ box.innerHTML=''; empty.style.display='block'; return; }
+    empty.style.display='none';
+    box.innerHTML=BANNERS.map(b=>`<label class="${sel.includes(b.label)?'on':''}"><input type="checkbox" value="${esc(b.label)}" ${sel.includes(b.label)?'checked':''} onchange="this.parentElement.classList.toggle('on',this.checked)"><span class="swat" style="background:${esc(b.kleur||'#1b46c2')}"></span>${esc(b.label)}</label>`).join('');
+  }
+  function openBanners(){ renderBannerRows(BANNERS); document.getElementById('ban-overlay').classList.add('on'); }
+  function closeBanners(){ document.getElementById('ban-overlay').classList.remove('on'); }
+  function bannerRowHTML(b){
+    const kl=b.kleur||'#1b46c2', typ=kl==='gold'?'gold':kl==='silver'?'silver':'custom';
+    const hex=(typ==='custom')?kl:'#1b46c2';
+    return `<div class="addon-row"><input class="b-label" type="text" placeholder="bv. Limited Edition" value="${esc(b.label||'')}"><select class="b-type" onchange="bannerTypeChange(this)" style="flex:0 0 auto"><option value="custom"${typ==='custom'?' selected':''}>Eigen kleur</option><option value="gold"${typ==='gold'?' selected':''}>Goud ✦</option><option value="silver"${typ==='silver'?' selected':''}>Zilver ✦</option></select><input class="b-kleur" type="color" value="${esc(hex)}" style="width:46px;padding:2px;flex:0 0 auto;${typ!=='custom'?'display:none':''}"><button type="button" class="btn danger sm" onclick="this.parentElement.remove()">×</button></div>`;
+  }
+  function bannerTypeChange(sel){ const c=sel.closest('.addon-row').querySelector('.b-kleur'); c.style.display=sel.value==='custom'?'':'none'; }
+  function renderBannerRows(list){ document.getElementById('ban-list').innerHTML=(list||[]).map(bannerRowHTML).join(''); }
+  function addBannerRow(){ document.getElementById('ban-list').insertAdjacentHTML('beforeend', bannerRowHTML({label:'',kleur:'#1b46c2'})); }
+  async function saveBanners(){
+    const list=[...document.querySelectorAll('#ban-list .addon-row')].map(r=>{ const typ=r.querySelector('.b-type').value; const kleur=typ==='custom'?r.querySelector('.b-kleur').value:typ; return {label:r.querySelector('.b-label').value.trim(),kleur}; }).filter(b=>b.label);
+    const btn=document.getElementById('ban-save'); btn.disabled=true; btn.textContent='Opslaan…';
+    try{ const { error }=await sb.from('app_settings').upsert({ key:'banners', value:JSON.stringify(list) }); if(error) throw error; BANNERS=list; closeBanners(); }
+    catch(e){ alert('Opslaan mislukt: '+(e.message||e)); }
+    finally{ btn.disabled=false; btn.textContent='Opslaan'; }
   }
 
   /* ---------------- storage ---------------- */
@@ -410,8 +456,9 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
       const th=(p.fotos&&p.fotos.length)?`<img src="${p.fotos[0]}" alt="">`:'geen foto';
       const statusPill=p.status==='offline'?'<span class="pill offline">Offline</span>':p.status==='uitverkocht'?'<span class="pill uitverkocht">Uitverkocht</span>':(p.status==='terug'&&!beschikbaar(p))?`<span class="pill terug">Terug vanaf ${fmtDatum(p.terug_vanaf)}</span>`:'<span class="pill bestel">Bestelbaar</span>';
       const nieuw=p.nieuw?'<span class="pill nieuw">Nieuw</span>':'';
+      const banPills=(p.banners||[]).map(b=>`<span class="pill" style="background:${esc((typeof b==='string'?'':b.kleur)||'#1b46c2')};color:#fff">${esc(typeof b==='string'?b:b.label)}</span>`).join('');
       const sw=(p.kleuren||[]).map(k=>`<span class="swat" title="${esc(k)}" style="background:${KLEUR_HEX[(k||'').toLowerCase()]||'#ccc'}"></span>`).join(' ');
-      return `<div class="row" draggable="true" data-idx="${i}"><span class="drag-h" title="Sleep om te herschikken">⠿</span><div class="th">${th}</div><div class="info"><div class="nm">${esc(p.naam_nl||'(zonder naam)')} <span style="color:var(--muted);font-weight:500">· ${esc(p.prijs)}</span></div><div class="sub">${statusPill}${nieuw}<span>${USE_LABEL[p.gebruik]||''}</span><span>${sw}</span>${p.fotos&&p.fotos.length>1?`<span>${p.fotos.length} foto's</span>`:''}</div></div>
+      return `<div class="row" draggable="true" data-idx="${i}"><span class="drag-h" title="Sleep om te herschikken">⠿</span><div class="th">${th}</div><div class="info"><div class="nm">${esc(p.naam_nl||'(zonder naam)')} <span style="color:var(--muted);font-weight:500">· ${esc(p.prijs)}</span></div><div class="sub">${statusPill}${nieuw}${banPills}<span>${USE_LABEL[p.gebruik]||''}</span><span>${sw}</span>${p.fotos&&p.fotos.length>1?`<span>${p.fotos.length} foto's</span>`:''}</div></div>
       <div class="acts"><button class="btn icon" onclick="move(${i},-1)">↑</button><button class="btn icon" onclick="move(${i},1)">↓</button><button class="btn ghost sm" onclick="openEditor(${i})">Bewerk</button><button class="btn danger sm" onclick="del(${i})">Verwijder</button></div></div>`;
     }).join('');
   }
@@ -426,7 +473,7 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
 
   function openEditor(idx){
     editIdx=idx;
-    const p=idx==null?{naam_nl:'',naam_en:'',naam_fr:'',oms_nl:'',oms_en:'',oms_fr:'',prijs:'',gebruik:'beide',status:'bestel',terug_vanaf:'',nieuw:false,kleuren:[],fotos:[]}:items[idx];
+    const p=idx==null?{naam_nl:'',naam_en:'',naam_fr:'',oms_nl:'',oms_en:'',oms_fr:'',prijs:'',gebruik:'beide',status:'bestel',terug_vanaf:'',nieuw:false,kleuren:[],banners:[],fotos:[]}:items[idx];
     document.getElementById('modal-title').textContent=idx==null?'Nieuw item':'Item bewerken';
     ['nl','en','fr'].forEach(l=>{ document.getElementById('f-naam-'+l).value=p['naam_'+l]||''; document.getElementById('f-oms-'+l).value=p['oms_'+l]||''; });
     document.getElementById('f-prijs').value=p.prijs||'';
@@ -438,6 +485,7 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
     const sel=(p.kleuren||[]).filter(k=>known.includes((k||'').toLowerCase()));
     const extra=(p.kleuren||[]).filter(k=>!known.includes((k||'').toLowerCase()));
     buildColorChecks(sel);
+    buildBannerChecks((p.banners||[]).map(b=>typeof b==='string'?b:b.label));
     document.getElementById('f-kleuren-extra').value=extra.join(', ');
     draftFotos=[...(p.fotos||[])]; renderFotos(); toggleTerug();
     // intern
@@ -481,6 +529,8 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
     if(!nn){ alert('Geef minstens een Nederlandse naam in.'); return; }
     const known=[...document.querySelectorAll('#f-kleuren input:checked')].map(c=>c.value);
     const extra=document.getElementById('f-kleuren-extra').value.split(',').map(s=>s.trim()).filter(Boolean);
+    const selBanners=[...document.querySelectorAll('#f-banners input:checked')].map(c=>c.value);
+    const banners=BANNERS.filter(b=>selBanners.includes(b.label)).map(b=>({label:b.label,kleur:b.kleur||'#1b46c2'}));
     const g=(id)=>document.getElementById(id).value.trim();
     const status=document.getElementById('f-status').value;
     const row={
@@ -488,7 +538,7 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
       oms_nl:g('f-oms-nl'), oms_en:g('f-oms-en'), oms_fr:g('f-oms-fr'),
       prijs:g('f-prijs'), gebruik:document.getElementById('f-gebruik').value,
       status, terug_vanaf: status==='terug' && document.getElementById('f-terug').value ? document.getElementById('f-terug').value : null,
-      nieuw:document.getElementById('f-nieuw').checked, kleuren:[...known,...extra], fotos:[...draftFotos]
+      nieuw:document.getElementById('f-nieuw').checked, kleuren:[...known,...extra], banners, fotos:[...draftFotos]
     };
     const btn=document.getElementById('save-btn'); btn.disabled=true; btn.textContent='Opslaan…';
     try{
@@ -674,6 +724,7 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
   document.getElementById('gal-overlay').addEventListener('click',e=>{ if(e.target.id==='gal-overlay') closeGal(); });
   document.getElementById('about-overlay').addEventListener('click',e=>{ if(e.target.id==='about-overlay') closeAbout(); });
   document.getElementById('code-overlay').addEventListener('click',e=>{ if(e.target.id==='code-overlay') closeCode(); });
+  document.getElementById('ban-overlay').addEventListener('click',e=>{ if(e.target.id==='ban-overlay') closeBanners(); });
   // drag & drop volgorde collectie
   let dragIdx=null;
   const listEl=document.getElementById('list');

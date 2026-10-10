@@ -100,6 +100,11 @@
   .product .badge.sold{background:#b23b3b}
   .product .badge.terug{background:#c98a1e}
   .product .badge.nieuw{background:var(--blue)}
+  .product .ribbons{position:absolute;top:0;right:0;width:148px;height:148px;overflow:hidden;z-index:4;pointer-events:none}
+  .product .ribbon{position:absolute;right:-44px;width:170px;text-align:center;transform:rotate(45deg);font-family:'Montserrat',sans-serif;font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#fff;padding:5px 0;box-shadow:0 1px 4px rgba(0,0,0,.25);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .product .ribbon-0{top:26px}
+  .product .ribbon-1{top:52px}
+  .product .ribbon-2{top:78px}
   .product .nav-arrow{position:absolute;top:50%;transform:translateY(-50%);z-index:4;width:38px;height:38px;border-radius:50%;border:none;background:rgba(255,255,255,.9);color:var(--navy);font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px -3px rgba(10,26,79,.5)}
   .product .nav-arrow:hover{background:#fff}
   .product .nav-arrow.prev{left:8px} .product .nav-arrow.next{right:8px}
@@ -455,7 +460,7 @@
       opt_binnen:"Binnengebruik", opt_buiten:"Buitengebruik", opt_beide:"Beide", opt_weet:"Weet ik nog niet",
       lbl_mw_foto:"Foto of voorbeeld (optioneel)", hint_mw_foto:"Max ~10 MB. Afbeelding, PDF of STL.", lbl_mw_tel:"Telefoon (optioneel)", btn_mw_submit:"Aanvraag versturen", thanks_mw_h:"Bedankt voor je aanvraag!", thanks_mw_p:"We bekijken je idee en nemen binnen 7 werkdagen contact met je op.",
       foot_script:"Tot binnenkort", foot_contact:'Vragen? Mail ons op <a href="mailto:info@bluecatservices.be">info@bluecatservices.be</a>',
-      card_bestel:"Bestel", badge_nieuw:"Nieuw", badge_uitverkocht:"Uitverkocht", badge_terug:"Terug vanaf", pick_uit:"Uitverkocht", pick_terug:"Binnenkort terug", foto_volgt:"Foto volgt", geen_voorkeur:"Geen voorkeur",
+      card_bestel:"Bestel", badge_nieuw:"New", badge_uitverkocht:"Uitverkocht", badge_terug:"Terug vanaf", pick_uit:"Uitverkocht", pick_terug:"Binnenkort terug", foto_volgt:"Foto volgt", geen_voorkeur:"Geen voorkeur",
       gate_title:"Toegang", gate_sub:"Voer de toegangscode in.", gate_ph:"Toegangscode", gate_btn:"Binnenkomen", gate_err:"Onjuiste code.", incl_btw:"incl. btw", newsletter_label:"Voeg me toe aan de nieuwsbrief (max. 1× per kwartaal)", foot_legal:"Juridisch & privacy"
     },
     en:{
@@ -503,7 +508,7 @@
       opt_binnen:"Usage intérieur", opt_buiten:"Usage extérieur", opt_beide:"Les deux", opt_weet:"Je ne sais pas encore",
       lbl_mw_foto:"Photo ou exemple (facultatif)", hint_mw_foto:"Max ~10 Mo. Image, PDF ou STL.", lbl_mw_tel:"Téléphone (facultatif)", btn_mw_submit:"Envoyer la demande", thanks_mw_h:"Merci pour votre demande !", thanks_mw_p:"Nous examinerons votre idée et vous recontacterons dans les 7 jours ouvrables.",
       foot_script:"À bientôt", foot_contact:'Des questions ? Écrivez-nous à <a href="mailto:info@bluecatservices.be">info@bluecatservices.be</a>',
-      card_bestel:"Commander", badge_nieuw:"Nouveau", badge_uitverkocht:"Épuisé", badge_terug:"De retour dès", pick_uit:"Épuisé", pick_terug:"Bientôt de retour", foto_volgt:"Photo à venir", geen_voorkeur:"Sans préférence",
+      card_bestel:"Commander", badge_nieuw:"New", badge_uitverkocht:"Épuisé", badge_terug:"De retour dès", pick_uit:"Épuisé", pick_terug:"Bientôt de retour", foto_volgt:"Photo à venir", geen_voorkeur:"Sans préférence",
       gate_title:"Accès", gate_sub:"Entrez le code d'accès.", gate_ph:"Code d'accès", gate_btn:"Entrer", gate_err:"Code incorrect.", incl_btw:"TVA comprise", newsletter_label:"Ajoutez-moi à la newsletter (max. 1× par trimestre)", foot_legal:"Mentions légales & confidentialité"
     }
   };
@@ -556,6 +561,8 @@
   const LOC={nl:'nl-BE',en:'en-GB',fr:'fr-BE'};
   function fmtDatum(s){ if(!s)return''; const d=new Date(s+'T00:00:00'); return isNaN(d)?s:d.toLocaleDateString(LOC[lang]||'nl-BE',{day:'numeric',month:'short',year:'numeric'}); }
   function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  const METAL={gold:{bg:'linear-gradient(135deg,#bf953f 0%,#fcf6ba 42%,#b38728 52%,#fbf5b7 72%,#aa771c 100%)',fg:'#4a3800',sh:'rgba(255,255,255,.5)'},silver:{bg:'linear-gradient(135deg,#9a9a9a 0%,#f4f4f4 42%,#a8a8a8 52%,#f0f0f0 72%,#808080 100%)',fg:'#333',sh:'rgba(255,255,255,.6)'}};
+  function bannerStyle(kl){ const m=METAL[(kl||'').toLowerCase()]; if(m) return `background:${m.bg};color:${m.fg};text-shadow:0 1px 0 ${m.sh}`; return `background:${esc(kl)};color:#fff`; }
 
   function vulKleuren(label){
     const kleurSel=document.getElementById('kleur');
@@ -620,12 +627,14 @@
       if(p.status==='uitverkocht') badges.push(`<span class="badge sold">${tr('badge_uitverkocht')}</span>`);
       else if(p.status==='terug' && !avail) badges.push(`<span class="badge terug">${tr('badge_terug')} ${fmtDatum(p.terugVanaf)}</span>`);
       const badgeBox=badges.length?`<div class="badges">${badges.join('')}</div>`:'';
+      const bannerList=(p.banners||[]).filter(b=>b&&(typeof b==='string'||b.label));
+      const ribbonBox=bannerList.length?`<div class="ribbons">${bannerList.slice(0,3).map((b,ri)=>{const lbl=typeof b==='string'?b:b.label;const kl=typeof b==='string'?'#1b46c2':(b.kleur||'#1b46c2');return `<span class="ribbon ribbon-${ri}" style="${bannerStyle(kl)}">${esc(lbl)}</span>`;}).join('')}</div>`:'';
       const btn=avail?`<button class="pick" data-label="${esc(pNaam(p))} (${p.prijs})">${tr('card_bestel')}</button>`:`<button class="pick disabled">${p.status==='uitverkocht'?tr('pick_uit'):tr('pick_terug')}</button>`;
       const use=p.gebruik?`<span class="use"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 10l9-7 9 7v9a1 1 0 0 1-1 1h-4v-6H8v6H4a1 1 0 0 1-1-1z"/></svg>${(USE_LABEL[lang]||USE_LABEL.nl)[p.gebruik]||p.gebruik}</span>`:'';
       const swatches=(p.kleuren||[]).map(k=>`<span class="swatch" title="${esc(kleurNaam(k))}" style="background:${KLEUR_HEX[(k||'').toLowerCase()]||'#ccc'}"></span>`).join('');
       const colors=swatches?`<span class="colors">${swatches}</span>`:'';
       const meta=(use||colors)?`<div class="meta">${use}${colors}</div>`:'';
-      return `<div class="product reveal" data-pi="${idx}"><div class="thumb">${mainImg}${arrows}${badgeBox}${dots}</div><div class="body"><h3>${esc(pNaam(p))}</h3><div class="desc">${esc(pOms(p))}</div>${meta}<div class="foot"><span class="price">${esc(p.prijs)}<span class="vat">${tr('incl_btw')}</span></span>${btn}</div></div></div>`;
+      return `<div class="product reveal" data-pi="${idx}"><div class="thumb">${mainImg}${arrows}${badgeBox}${ribbonBox}${dots}</div><div class="body"><h3>${esc(pNaam(p))}</h3><div class="desc">${esc(pOms(p))}</div>${meta}<div class="foot"><span class="price">${esc(p.prijs)}<span class="vat">${tr('incl_btw')}</span></span>${btn}</div></div></div>`;
     }).join('');
 
     document.querySelectorAll('.product .dot').forEach(d=>{ d.addEventListener('click',()=>setPhoto(+d.dataset.pi,+d.dataset.fi)); });
@@ -724,7 +733,7 @@
       if(pr.error) throw pr.error;
       if(!ct.error && ct.data){ CONTENT={}; ct.data.forEach(r=>CONTENT[r.key]=r.value); applyAbout(); }
       PRODUCTEN = (pr.data||[]).filter(r=>r.status!=='offline').map(r=>({
-        id:r.id, prijs:r.prijs||'', status:r.status||'bestel', terugVanaf:r.terug_vanaf||'', nieuw:!!r.nieuw,
+        id:r.id, prijs:r.prijs||'', status:r.status||'bestel', terugVanaf:r.terug_vanaf||'', nieuw:!!r.nieuw, banners:r.banners||[],
         gebruik:r.gebruik||'beide', kleuren:r.kleuren||[], fotos:r.fotos||[],
         naam_nl:r.naam_nl||'', naam_en:r.naam_en||'', naam_fr:r.naam_fr||'',
         oms_nl:r.oms_nl||'', oms_en:r.oms_en||'', oms_fr:r.oms_fr||''
@@ -748,12 +757,12 @@
     try{
       const { data, error } = await SB.rpc('check_access_code',{code});
       if(error) throw error;
-      if(data===true){ sessionStorage.setItem('bt_access_ok','1'); unlockShop(); }
+      if(data===true){ localStorage.setItem('bt_access_ok','1'); unlockShop(); }
       else err.textContent=tr('gate_err');
     }catch(e){ console.error(e); err.textContent=tr('gate_err'); }
   }
   async function gateInit(){
-    if(sessionStorage.getItem('bt_access_ok')==='1'){ unlockShop(); return; }
+    if(localStorage.getItem('bt_access_ok')==='1'){ unlockShop(); return; }
     try{
       const { data, error } = await SB.rpc('check_access_code',{code:''});
       if(!error && data===true){ unlockShop(); return; } // geen code ingesteld -> shop open
@@ -766,40 +775,6 @@
   render();
   onScroll();
   gateInit();
-</script>
-<script>
-/* Tellen zonder cookies: bezoek en kliks op items. */
-(function(){
-  function tel(s,n){
-    try{ var i=new Image(1,1); i.src="tel.php?s="+s+"&n="+encodeURIComponent(n)+"&r="+Math.random(); }catch(e){}
-  }
-  function slug(t){
-    return (t||"").toLowerCase()
-      .replace(/[\u00e0-\u00e5]/g,"a").replace(/[\u00e8-\u00eb]/g,"e")
-      .replace(/[\u00ec-\u00ef]/g,"i").replace(/[\u00f2-\u00f6]/g,"o")
-      .replace(/[\u00f9-\u00fc]/g,"u").replace(/\u00e7/g,"c")
-      .replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+""/g,"").slice(0,46);
-  }
-  tel("p","home");
-  document.addEventListener("click", function(e){
-    var t = e.target;
-    if(!t || !t.closest) return;
-    var p = t.closest(".product");
-    if(p){
-      var k = p.querySelector("h3,h4,.naam,.titel");
-      var s = slug(k ? k.textContent : "");
-      if(!s) s = "nr-" + (p.getAttribute("data-pi") || "?");
-      tel("k", "item/" + s);
-      return;
-    }
-    var a = t.closest("a");
-    if(!a) return;
-    var h = a.getAttribute("href") || "";
-    if(h.indexOf("mailto:") === 0) tel("k","mailadres");
-    else if(h.indexOf("#bestellen") > -1) tel("k","bestellen");
-    else if(h.indexOf("#maatwerk") > -1) tel("k","maatwerk");
-  }, true);
-})();
 </script>
 </body>
 </html>
