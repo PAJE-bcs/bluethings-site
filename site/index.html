@@ -594,7 +594,7 @@
   function startAutoRotate(){
     stopAutoRotate();
     if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const INTERVAL=4000;
+    const INTERVAL=3000;
     document.querySelectorAll('.product[data-pi]').forEach(card=>{
       const pi=+card.dataset.pi;
       const fotos=(PRODUCTEN[pi]&&PRODUCTEN[pi].fotos)||[];
