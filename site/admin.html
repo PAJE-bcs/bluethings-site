@@ -69,7 +69,7 @@
   .foto{position:relative;width:84px;height:84px;border-radius:8px;overflow:hidden;border:1px solid var(--line);cursor:grab}
   .foto.dragging{opacity:.4}
   .foto.drop-target{outline:2px solid var(--blue);outline-offset:1px}
-  .foto img{width:100%;height:100%;object-fit:cover}
+  .foto img{width:100%;height:100%;object-fit:cover;pointer-events:none}
   .foto .x{position:absolute;top:2px;right:2px;background:rgba(178,59,59,.92);color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:1}
   .foto .mv{position:absolute;bottom:2px;left:2px;display:flex;gap:2px}
   .foto .mv button{background:rgba(10,26,79,.8);color:#fff;border:none;border-radius:4px;width:18px;height:18px;cursor:pointer;font-size:11px;line-height:1;padding:0}
@@ -835,19 +835,21 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
   listEl.addEventListener('drop',async e=>{ if(dragIdx==null)return; e.preventDefault(); const row=e.target.closest('.row[draggable]'); if(!row){dragIdx=null;return;} const target=+row.dataset.idx; const from=dragIdx; dragIdx=null; if(target===from)return; const [moved]=items.splice(from,1); items.splice(target,0,moved); renderList(); await persistOrder('products',items); });
   listEl.addEventListener('dragend',()=>{ dragIdx=null; listEl.querySelectorAll('.row').forEach(r=>r.classList.remove('dragging','drop-target')); });
   // drag & drop volgorde foto's in de item-editor
-  let fDragIdx=null;
-  const fotosEl=document.getElementById('f-fotos');
-  fotosEl.addEventListener('dragstart',e=>{ const c=e.target.closest('.foto[draggable]'); if(!c)return; fDragIdx=+c.dataset.fidx; e.dataTransfer.effectAllowed='move'; c.classList.add('dragging'); });
-  fotosEl.addEventListener('dragover',e=>{ if(fDragIdx==null)return; e.preventDefault(); const c=e.target.closest('.foto[draggable]'); fotosEl.querySelectorAll('.foto.drop-target').forEach(x=>x.classList.remove('drop-target')); if(c) c.classList.add('drop-target'); });
-  fotosEl.addEventListener('drop',e=>{ if(fDragIdx==null)return; e.preventDefault(); const c=e.target.closest('.foto[draggable]'); if(!c){fDragIdx=null;return;} const target=+c.dataset.fidx, from=fDragIdx; fDragIdx=null; if(target===from)return; const [m]=draftFotos.splice(from,1); draftFotos.splice(target,0,m); renderFotos(); });
-  fotosEl.addEventListener('dragend',()=>{ fDragIdx=null; fotosEl.querySelectorAll('.foto').forEach(x=>x.classList.remove('dragging','drop-target')); });
-  // drag & drop volgorde klantenfoto's (galerij)
-  let gDragIdx=null;
-  const gFotosEl=document.getElementById('g-foto-prev');
-  gFotosEl.addEventListener('dragstart',e=>{ const c=e.target.closest('.foto[draggable]'); if(!c)return; gDragIdx=+c.dataset.fidx; e.dataTransfer.effectAllowed='move'; c.classList.add('dragging'); });
-  gFotosEl.addEventListener('dragover',e=>{ if(gDragIdx==null)return; e.preventDefault(); const c=e.target.closest('.foto[draggable]'); gFotosEl.querySelectorAll('.foto.drop-target').forEach(x=>x.classList.remove('drop-target')); if(c) c.classList.add('drop-target'); });
-  gFotosEl.addEventListener('drop',e=>{ if(gDragIdx==null)return; e.preventDefault(); const c=e.target.closest('.foto[draggable]'); if(!c){gDragIdx=null;return;} const target=+c.dataset.fidx, from=gDragIdx; gDragIdx=null; if(target===from)return; const [m]=draftGalFotos.splice(from,1); draftGalFotos.splice(target,0,m); renderGalFotos(); });
-  gFotosEl.addEventListener('dragend',()=>{ gDragIdx=null; gFotosEl.querySelectorAll('.foto').forEach(x=>x.classList.remove('dragging','drop-target')); });
+  function nearestFotoIdx(container,x,y){
+    let best=null,bd=Infinity;
+    container.querySelectorAll('.foto[draggable]').forEach(t=>{ const r=t.getBoundingClientRect(); const d=(r.left+r.width/2-x)**2+(r.top+r.height/2-y)**2; if(d<bd){bd=d;best=t;} });
+    return best?+best.dataset.fidx:null;
+  }
+  function makeFotoDnD(container, getArr, render){
+    if(!container) return;
+    let dragIdx=null;
+    container.addEventListener('dragstart',e=>{ const c=e.target.closest('.foto[draggable]'); if(!c)return; dragIdx=+c.dataset.fidx; e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',String(dragIdx));}catch(_){} c.classList.add('dragging'); });
+    container.addEventListener('dragover',e=>{ if(dragIdx==null)return; e.preventDefault(); e.dataTransfer.dropEffect='move'; const ti=nearestFotoIdx(container,e.clientX,e.clientY); container.querySelectorAll('.foto.drop-target').forEach(x=>x.classList.remove('drop-target')); if(ti!=null){ const t=container.querySelector('.foto[data-fidx="'+ti+'"]'); if(t)t.classList.add('drop-target'); } });
+    container.addEventListener('drop',e=>{ if(dragIdx==null)return; e.preventDefault(); const target=nearestFotoIdx(container,e.clientX,e.clientY); const from=dragIdx; dragIdx=null; if(target==null||target===from)return; const arr=getArr(); const [m]=arr.splice(from,1); arr.splice(target,0,m); render(); });
+    container.addEventListener('dragend',()=>{ dragIdx=null; container.querySelectorAll('.foto').forEach(x=>x.classList.remove('dragging','drop-target')); });
+  }
+  makeFotoDnD(document.getElementById('f-fotos'), ()=>draftFotos, renderFotos);
+  makeFotoDnD(document.getElementById('g-foto-prev'), ()=>draftGalFotos, renderGalFotos);
   initAuth();
 </script>
 </body>
