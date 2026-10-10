@@ -1,0 +1,17 @@
+name: Weekrapport Blue Things
+on:
+  schedule:
+    - cron: '22 6 * * 6'
+  workflow_dispatch:
+jobs:
+  mailen:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rapport laten versturen
+        run: |
+          code=$(curl -sS -o /tmp/uit.txt -w "%{http_code}" --max-time 90 \
+            "https://bluethings.be/mailrapport.php")
+          echo "HTTP $code"
+          cat /tmp/uit.txt
+          echo
+          test "$code" = "200"
