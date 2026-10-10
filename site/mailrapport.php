@@ -26,7 +26,8 @@ $map = tel_map();
 if ($map === null) { http_response_code(500); exit('geen datamap'); }
 
 $slot = $map . '/verstuurd-' . TEL_SITE . '-' . $periode . '.txt';
-if (!$forceer && is_file($slot)) { exit('al verstuurd voor ' . $periode); }
+$af = strtotime(tel_periode_einde($periode) . ' 23:59:59');
+if (!$forceer && is_file($slot) && filemtime($slot) > $af) { exit('al verstuurd voor ' . $periode); }
 
 $pad  = $map . '/' . TEL_SITE . '-' . $periode . '.json';
 $data = is_file($pad) ? json_decode((string) file_get_contents($pad), true) : null;
