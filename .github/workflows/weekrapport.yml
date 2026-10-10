@@ -1,12 +1,18 @@
 name: Weekrapport Blue Things
+
 on:
   schedule:
     - cron: '22 6 * * 6'
   workflow_dispatch:
+
 jobs:
   mailen:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
+      - uses: actions/checkout@v4
+
       - name: Rapport laten versturen
         run: |
           code=$(curl -sS -o /tmp/uit.txt -w "%{http_code}" --max-time 90 \
@@ -15,3 +21,16 @@ jobs:
           cat /tmp/uit.txt
           echo
           test "$code" = "200"
+
+      # Houdt de repo levend: GitHub schakelt geplande workflows uit
+      # na 60 dagen zonder commit. Deze regel zet die teller elke week terug.
+      - name: Hartslag committen
+        if: always()
+        run: |
+          mkdir -p .github
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .github/laatste-rapport.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/laatste-rapport.txt
+          git commit -m "Hartslag weekrapport [skip ci]" || exit 0
+          git push
