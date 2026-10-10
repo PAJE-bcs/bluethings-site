@@ -250,6 +250,7 @@
   <input type="password" id="gate-code" data-i18n-ph="gate_ph" placeholder="Toegangscode">
   <button class="btn util" onclick="checkGate()" data-i18n="gate_btn">Binnenkomen</button>
   <div class="err" id="gate-err"></div>
+  <p id="gate-forgot" style="display:none;font-size:13px;color:var(--ink-soft);margin:2px 0 0">Forgot the password? Send a WhatsApp to Pascal.</p>
 </div>
 
 <!-- NAV -->
@@ -779,12 +780,13 @@
   async function checkGate(){
     const code=document.getElementById('gate-code').value;
     const err=document.getElementById('gate-err'); err.textContent='';
+    const forgot=document.getElementById('gate-forgot'); forgot.style.display='none';
     try{
       const { data, error } = await SB.rpc('check_access_code',{code});
       if(error) throw error;
       if(data===true){ localStorage.setItem('bt_access_ok','1'); unlockShop(); }
-      else err.textContent=tr('gate_err');
-    }catch(e){ console.error(e); err.textContent=tr('gate_err'); }
+      else { err.textContent=tr('gate_err'); forgot.style.display='block'; }
+    }catch(e){ console.error(e); err.textContent=tr('gate_err'); forgot.style.display='block'; }
   }
   async function gateInit(){
     if(localStorage.getItem('bt_access_ok')==='1'){ unlockShop(); return; }
