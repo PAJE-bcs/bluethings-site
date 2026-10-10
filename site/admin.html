@@ -65,7 +65,10 @@
   .colors label{display:inline-flex;align-items:center;gap:6px;font-size:13px;border:1px solid var(--line);border-radius:20px;padding:5px 10px;cursor:pointer}
   .colors label.on{border-color:var(--blue);background:#f2f5ff}
   .colors input{display:none}
-  .fotos{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+  .fotos{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;min-height:72px;padding:8px;border:2px dashed var(--line);border-radius:10px;align-content:flex-start}
+  .fotos:empty::before{content:"Sleep hier foto's van je pc, of gebruik de knop hieronder";color:var(--muted);font-size:12px;align-self:center;width:100%;text-align:center}
+  .fotos.dragover{border-color:var(--blue);background:#f3f5fb}
+  .fotos.busy{opacity:.6;pointer-events:none}
   .foto{position:relative;width:84px;height:84px;border-radius:8px;overflow:hidden;border:1px solid var(--line);cursor:grab}
   .foto.dragging{opacity:.4}
   .foto.drop-target{outline:2px solid var(--blue);outline-offset:1px}
@@ -840,16 +843,31 @@ Que vous cherchiez de l'inspiration parmi mes trouvailles ou que vous veniez ave
     container.querySelectorAll('.foto[draggable]').forEach(t=>{ const r=t.getBoundingClientRect(); const d=(r.left+r.width/2-x)**2+(r.top+r.height/2-y)**2; if(d<bd){bd=d;best=t;} });
     return best?+best.dataset.fidx:null;
   }
-  function makeFotoDnD(container, getArr, render){
+  function makeFotoDnD(container, getArr, render, folder){
     if(!container) return;
     let dragIdx=null;
+    const hasFiles=e=>e.dataTransfer && Array.from(e.dataTransfer.types||[]).includes('Files');
     container.addEventListener('dragstart',e=>{ const c=e.target.closest('.foto[draggable]'); if(!c)return; dragIdx=+c.dataset.fidx; e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',String(dragIdx));}catch(_){} c.classList.add('dragging'); });
-    container.addEventListener('dragover',e=>{ if(dragIdx==null)return; e.preventDefault(); e.dataTransfer.dropEffect='move'; const ti=nearestFotoIdx(container,e.clientX,e.clientY); container.querySelectorAll('.foto.drop-target').forEach(x=>x.classList.remove('drop-target')); if(ti!=null){ const t=container.querySelector('.foto[data-fidx="'+ti+'"]'); if(t)t.classList.add('drop-target'); } });
-    container.addEventListener('drop',e=>{ if(dragIdx==null)return; e.preventDefault(); const target=nearestFotoIdx(container,e.clientX,e.clientY); const from=dragIdx; dragIdx=null; if(target==null||target===from)return; const arr=getArr(); const [m]=arr.splice(from,1); arr.splice(target,0,m); render(); });
-    container.addEventListener('dragend',()=>{ dragIdx=null; container.querySelectorAll('.foto').forEach(x=>x.classList.remove('dragging','drop-target')); });
+    container.addEventListener('dragover',e=>{
+      // altijd toelaten: nodig zowel voor herschikken als voor uploaden-door-slepen
+      if(dragIdx==null && !hasFiles(e)) return;
+      e.preventDefault();
+      if(dragIdx!=null){ e.dataTransfer.dropEffect='move'; const ti=nearestFotoIdx(container,e.clientX,e.clientY); container.querySelectorAll('.foto.drop-target').forEach(x=>x.classList.remove('drop-target')); if(ti!=null){ const t=container.querySelector('.foto[data-fidx="'+ti+'"]'); if(t)t.classList.add('drop-target'); } }
+      else { e.dataTransfer.dropEffect='copy'; container.classList.add('dragover'); }
+    });
+    container.addEventListener('dragleave',e=>{ if(!container.contains(e.relatedTarget)) container.classList.remove('dragover'); });
+    container.addEventListener('drop',async e=>{
+      container.classList.remove('dragover');
+      // 1) bestanden van de pc -> uploaden
+      const files=e.dataTransfer && e.dataTransfer.files;
+      if(files && files.length){ e.preventDefault(); container.classList.add('busy'); for(const f of [...files]){ if(f.type && f.type.startsWith('image/')){ try{ const url=await uploadPhoto(f,folder); getArr().push(url); render(); }catch(err){ alert('Upload mislukt: '+(err.message||err)); } } } container.classList.remove('busy'); dragIdx=null; return; }
+      // 2) bestaande foto herschikken
+      if(dragIdx==null)return; e.preventDefault(); const target=nearestFotoIdx(container,e.clientX,e.clientY); const from=dragIdx; dragIdx=null; if(target==null||target===from)return; const arr=getArr(); const [m]=arr.splice(from,1); arr.splice(target,0,m); render();
+    });
+    container.addEventListener('dragend',()=>{ dragIdx=null; container.querySelectorAll('.foto').forEach(x=>x.classList.remove('dragging','drop-target')); container.classList.remove('dragover'); });
   }
-  makeFotoDnD(document.getElementById('f-fotos'), ()=>draftFotos, renderFotos);
-  makeFotoDnD(document.getElementById('g-foto-prev'), ()=>draftGalFotos, renderGalFotos);
+  makeFotoDnD(document.getElementById('f-fotos'), ()=>draftFotos, renderFotos, 'products');
+  makeFotoDnD(document.getElementById('g-foto-prev'), ()=>draftGalFotos, renderGalFotos, 'gallery');
   // Voorkom dat de browser een gesleepte foto in een nieuwe tab opent wanneer je buiten het kader loslaat.
   window.addEventListener('dragover',e=>e.preventDefault(),false);
   window.addEventListener('drop',e=>e.preventDefault(),false);
